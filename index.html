@@ -1233,31 +1233,31 @@
                         </div>
 
                         <!-- Timer Configuration -->
+                        <div class="space-y-3">
+                            <label class="block font-bold uppercase tracking-wider text-espresso">
+                                TIMER DURATION FOR EACH GAME
+                            </label>
+                            <p class="text-[11px] text-mutedBronze">Choose how long players get for each type of question.</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div class="p-3 bg-cream border border-borderMuted rounded-xl">
+                                    <label class="block font-bold text-[11px] text-espresso mb-1.5">👍 AGREE / DISAGREE</label>
+                                    <input type="number" id="timer-agree" min="5" max="300" value="10" class="w-full px-3 py-2.5 bg-white border-2 border-borderMuted rounded-xl font-bold focus:border-purpleAccent focus:outline-none">
+                                    <p class="text-[10px] text-mutedBronze mt-1">seconds</p>
+                                </div>
+                                <div class="p-3 bg-cream border border-borderMuted rounded-xl">
+                                    <label class="block font-bold text-[11px] text-espresso mb-1.5">📚 BIBLE CATEGORIES</label>
+                                    <input type="number" id="timer-categories" min="5" max="300" value="60" class="w-full px-3 py-2.5 bg-white border-2 border-borderMuted rounded-xl font-bold focus:border-purpleAccent focus:outline-none">
+                                    <p class="text-[10px] text-mutedBronze mt-1">seconds</p>
+                                </div>
+                                <div class="p-3 bg-cream border border-borderMuted rounded-xl">
+                                    <label class="block font-bold text-[11px] text-espresso mb-1.5">⏳ PUT IT IN ORDER</label>
+                                    <input type="number" id="timer-order" min="5" max="300" value="30" class="w-full px-3 py-2.5 bg-white border-2 border-borderMuted rounded-xl font-bold focus:border-purpleAccent focus:outline-none">
+                                    <p class="text-[10px] text-mutedBronze mt-1">seconds</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
-                                    TIMER DURATION
-                                </label>
-                                <select id="select-timer-len" onchange="app.handleTimerOptionChange()" class="w-full px-3 py-3 bg-cream border-2 border-borderMuted rounded-xl font-semibold text-espresso text-sm focus:border-purpleAccent focus:outline-none">
-                                    <option value="10">10 Seconds</option>
-                                    <option value="15">15 Seconds</option>
-                                    <option value="20" selected>20 Seconds</option>
-                                    <option value="30">30 Seconds</option>
-                                    <option value="45">45 Seconds</option>
-                                    <option value="60">60 Seconds</option>
-                                    <option value="CUSTOM">Custom Duration...</option>
-                                </select>
-                            </div>
-
-                            <!-- Custom Seconds (Shown if CUSTOM selected) -->
-                            <div id="custom-timer-box" class="hidden">
-                                <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
-                                    CUSTOM SECONDS
-                                </label>
-                                <input type="number" id="input-custom-seconds" min="5" max="300" value="25"
-                                    class="w-full px-3 py-2.5 bg-cream border-2 border-borderMuted rounded-xl font-bold text-espresso text-sm focus:border-purpleAccent focus:outline-none">
-                            </div>
-
                             <!-- Game Mode: Individual vs Tables -->
                             <div id="mode-box">
                                 <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
@@ -1300,15 +1300,13 @@
                 const gameType = document.getElementById('select-game-type').value;
                 const roundCountSetting = document.getElementById('select-round-count').value;
                 const difficulty = document.getElementById('select-difficulty').value;
-                const timerSetting = document.getElementById('select-timer-len').value;
                 const participantMode = document.getElementById('select-participant-mode').value;
 
-                let timerSeconds = 20;
-                if (timerSetting === 'CUSTOM') {
-                    timerSeconds = parseInt(document.getElementById('input-custom-seconds').value, 10) || 20;
-                } else {
-                    timerSeconds = parseInt(timerSetting, 10);
-                }
+                const gameTimers = {
+                    AGREE_DISAGREE: Math.max(5, parseInt(document.getElementById('timer-agree').value, 10) || 10),
+                    CATEGORIES: Math.max(5, parseInt(document.getElementById('timer-categories').value, 10) || 60),
+                    ORDER: Math.max(5, parseInt(document.getElementById('timer-order').value, 10) || 30)
+                };
 
                 // Build an event sequence. MIX means all three Bible games run
                 // under ONE code, with the same players and cumulative scores.
@@ -1345,8 +1343,9 @@
                     gamePools: gamePools,
                     participantMode: participantMode,
                     status: 'LOBBY', // LOBBY | QUESTION | TIME_UP | REVEALED | GAME_COMPLETE | ENDED
-                    timerLength: timerSeconds,
-                    timerRemaining: timerSeconds,
+                    gameTimers: gameTimers,
+                    timerLength: gameTimers[firstType],
+                    timerRemaining: gameTimers[firstType],
                     timerEndsAt: null,
                     timerRunning: false,
                     currentQuestionIndex: 0,
@@ -1606,21 +1605,48 @@
                                 let respBadge = '';
                                 if (resp) {
                                     if (typeof resp === 'string') respBadge = `<span class="px-2 py-0.5 bg-purpleSoft text-purpleAccent font-bold rounded-md font-mono">${resp}</span>`;
-                                    else if (Array.isArray(resp)) respBadge = `<span class="px-2 py-0.5 bg-purpleSoft text-purpleAccent font-bold rounded-md font-mono">Ordered</span>`;
+                                    else if (Array.isArray(resp)) respBadge = `<span class="px-2 py-0.5 bg-purpleSoft text-purpleAccent font-bold rounded-md font-mono">Ordered ✓</span>`;
+                                    else if (resp.type === 'CATEGORIES' && Array.isArray(resp.answers)) {
+                                        respBadge = `<span class="px-2 py-0.5 bg-goldLight text-espresso font-bold rounded-md">${resp.answers.length} answers submitted</span>`;
+                                    }
                                 }
                                 return `
-                                    <div class="flex justify-between items-center p-3 bg-cream rounded-xl border border-borderMuted">
-                                        <div class="flex items-center gap-2.5">
-                                            <span class="font-bold text-espresso text-sm">${p.name}</span>
-                                            ${respBadge}
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <span class="font-mono font-extrabold text-espresso text-base">${p.score || 0} pts</span>
-                                            <div class="flex items-center gap-1">
-                                                <button onclick="app.hostAdjustScore('${p.id}', 1)" class="w-8 h-8 bg-emerald-100 text-emerald-800 font-extrabold rounded-lg hover:bg-emerald-200 text-sm shadow-sm">+</button>
-                                                <button onclick="app.hostAdjustScore('${p.id}', -1)" class="w-8 h-8 bg-red-100 text-red-800 font-extrabold rounded-lg hover:bg-red-200 text-sm shadow-sm">-</button>
+                                    <div class="p-3 bg-cream rounded-xl border border-borderMuted space-y-3">
+                                        <div class="flex justify-between items-center gap-3">
+                                            <div class="flex items-center gap-2.5 flex-wrap">
+                                                <span class="font-bold text-espresso text-sm">${p.name}</span>
+                                                ${respBadge}
+                                            </div>
+                                            <div class="flex items-center gap-3">
+                                                <span class="font-mono font-extrabold text-espresso text-base">${p.score || 0} pts</span>
+                                                <div class="flex items-center gap-1">
+                                                    <button onclick="app.hostAdjustScore('${p.id}', 1)" class="w-8 h-8 bg-emerald-100 text-emerald-800 font-extrabold rounded-lg hover:bg-emerald-200 text-sm shadow-sm">+</button>
+                                                    <button onclick="app.hostAdjustScore('${p.id}', -1)" class="w-8 h-8 bg-red-100 text-red-800 font-extrabold rounded-lg hover:bg-red-200 text-sm shadow-sm">-</button>
+                                                </div>
                                             </div>
                                         </div>
+                                        ${data.gameType === 'CATEGORIES' && resp && resp.type === 'CATEGORIES' ? `
+                                            <div class="bg-white border border-borderMuted rounded-xl p-3 space-y-2">
+                                                <p class="text-[10px] font-bold uppercase tracking-wider text-mutedBronze">Submitted Answers</p>
+                                                <div class="flex flex-wrap gap-1.5">
+                                                    ${resp.answers.map(answer => `<span class="px-2.5 py-1.5 bg-purpleSoft text-purpleAccent rounded-lg font-bold text-xs">${answer}</span>`).join('')}
+                                                </div>
+                                                ${resp.marked ? `
+                                                    <div class="pt-2 border-t border-borderMuted font-bold text-emerald-700">✓ Marked: ${resp.pointsAwarded || 0} point${resp.pointsAwarded === 1 ? '' : 's'} awarded</div>
+                                                ` : `
+                                                    <div class="pt-2 border-t border-borderMuted">
+                                                        <p class="text-[10px] text-mutedBronze mb-2">Check the answers, then award the number of correct points.</p>
+                                                        <div class="flex flex-wrap gap-1.5">
+                                                            ${Array.from({ length: resp.answers.length + 1 }, (_, points) => `
+                                                                <button onclick="app.hostAwardCategoryPoints('${p.id}', ${points})" class="px-3 py-2 bg-cream hover:bg-goldLight border border-borderMuted hover:border-goldAccent rounded-lg font-extrabold text-xs transition">
+                                                                    ${points} pt${points === 1 ? '' : 's'}
+                                                                </button>
+                                                            `).join('')}
+                                                        </div>
+                                                    </div>
+                                                `}
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 `;
                             }).join('')}
@@ -1810,12 +1836,22 @@
                                 </button>
                             </div>
                         ` : currentQ.type === 'CATEGORIES' ? `
-                            <div class="bg-cream p-6 rounded-2xl border border-borderMuted text-center space-y-3">
-                                <div class="text-3xl">🗣️</div>
-                                <p class="text-sm font-bold text-espresso">Discuss with your table team!</p>
-                                <p class="text-xs text-mutedBronze leading-relaxed">
-                                    Call out your answers verbally at your table. The Host will reveal possible answers and award points.
-                                </p>
+                            <div class="space-y-4">
+                                <div class="text-center">
+                                    <p class="text-xs text-mutedBronze">Enter ${currentQ.minRequired || 5} answers before time runs out.</p>
+                                </div>
+                                <div id="category-answer-inputs" class="space-y-2.5">
+                                    ${Array.from({ length: currentQ.minRequired || 5 }, (_, i) => `
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-7 h-7 flex-shrink-0 rounded-full bg-purpleSoft text-purpleAccent font-extrabold text-xs flex items-center justify-center">${i + 1}</span>
+                                            <input type="text" id="category-answer-${i}" maxlength="50" autocomplete="off" placeholder="Type answer ${i + 1}..." class="flex-1 px-4 py-3 bg-cream border-2 border-borderMuted rounded-xl font-semibold text-espresso focus:border-purpleAccent focus:outline-none">
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button onclick="app.submitCategoryAnswers()" class="w-full py-4 bg-purpleAccent hover:bg-purpleHover text-cream font-extrabold text-base rounded-2xl shadow-lg transition border-2 border-goldAccent/40">
+                                    SUBMIT ANSWERS 🔒
+                                </button>
+                                <p class="text-[10px] text-center text-mutedBronze">Check your answers carefully. You cannot edit them after submitting.</p>
                             </div>
                         ` : `
                             <!-- PUT IT IN ORDER -->
@@ -1968,6 +2004,27 @@
             this.showToast("Answer Locked 🔒", "fa-lock");
         },
 
+        submitCategoryAnswers: function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            const currentQ = data.questions[data.currentQuestionIndex];
+            if (!currentQ || currentQ.type !== 'CATEGORIES') return;
+
+            const required = currentQ.minRequired || 5;
+            const answers = [];
+            for (let i = 0; i < required; i++) {
+                const input = document.getElementById(`category-answer-${i}`);
+                if (input && input.value.trim()) answers.push(input.value.trim());
+            }
+
+            if (answers.length === 0) {
+                this.showToast("Enter at least one answer before submitting.", "fa-triangle-exclamation");
+                return;
+            }
+
+            this.submitPlayerAnswer({ type: 'CATEGORIES', answers });
+        },
+
         submitOrderAnswer: function() {
             const el = document.getElementById('sortable-list');
             if (!el) return;
@@ -1995,7 +2052,7 @@
             const data = window.appState.currentGameData;
             if (!data) return;
             sound.playJoin();
-            const seconds = data.timerLength || 20;
+            const seconds = (data.gameTimers && data.gameTimers[data.gameType]) || data.timerLength || 20;
             await net.publish(data.code, {
                 ...data,
                 status: 'QUESTION',
@@ -2115,7 +2172,7 @@
                     status: isFinalGame ? 'ENDED' : 'GAME_COMPLETE'
                 });
             } else {
-                const seconds = data.timerLength || 20;
+                const seconds = (data.gameTimers && data.gameTimers[data.gameType]) || data.timerLength || 20;
                 await net.publish(data.code, {
                     ...data,
                     currentQuestionIndex: nextIdx,
@@ -2142,7 +2199,7 @@
                 this.showToast("No questions available for the next game.", "fa-triangle-exclamation");
                 return;
             }
-            const seconds = data.timerLength || 20;
+            const seconds = (data.gameTimers && data.gameTimers[nextType]) || data.timerLength || 20;
             await net.publish(data.code, {
                 ...data,
                 gameType: nextType,
@@ -2151,6 +2208,7 @@
                 currentQuestionIndex: 0,
                 responses: {},
                 status: 'QUESTION',
+                timerLength: seconds,
                 timerRemaining: seconds,
                 timerRunning: true,
                 timerEndsAt: Date.now() + (seconds * 1000),
@@ -2165,6 +2223,31 @@
                 ...data,
                 showLeaderboard: !data.showLeaderboard
             });
+        },
+
+        hostAwardCategoryPoints: async function(pId, points) {
+            const data = window.appState.currentGameData;
+            if (!data || !data.players || !data.players[pId]) return;
+
+            const responses = { ...(data.responses || {}) };
+            const response = responses[pId];
+            if (!response || response.type !== 'CATEGORIES') {
+                this.showToast("No Categories submission found.", "fa-triangle-exclamation");
+                return;
+            }
+            if (response.marked) {
+                this.showToast("Points have already been awarded for this answer.", "fa-circle-info");
+                return;
+            }
+
+            const awarded = Math.max(0, parseInt(points, 10) || 0);
+            const players = { ...data.players };
+            players[pId] = { ...players[pId], score: (players[pId].score || 0) + awarded };
+            responses[pId] = { ...response, pointsAwarded: awarded, marked: true };
+
+            await net.publish(data.code, { ...data, players, responses });
+            sound.playCorrect();
+            this.showToast(`${awarded} point${awarded === 1 ? '' : 's'} awarded to ${players[pId].name}`, "fa-circle-check");
         },
 
         hostAdjustScore: async function(pId, delta) {
