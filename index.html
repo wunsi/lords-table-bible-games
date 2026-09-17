@@ -589,35 +589,24 @@
         }
 
         async init() {
-            // Check if loaded via http/https and if local Node server is responding
-            if (window.location.protocol.startsWith('http')) {
-                try {
-                    const res = await fetch('/api/info', { signal: AbortSignal.timeout(1200) });
-                    if (res.ok) {
-                        const info = await res.json();
-                        if (info.status === 'ok') {
-                            this.mode = 'server';
-                            this.updateStatusUI('Local Event Server', 'bg-emerald-500');
-                            return;
-                        }
-                    }
-                } catch(e) {}
-            }
+            // Cloud deployment: connect directly to the Firebase project used by this app.
+            const firebaseConfig = {
+                apiKey: "AIzaSyCAdL-bVS1jA-1XAScErM-WGAaEM7LGS0I",
+                authDomain: "lords-table-games.firebaseapp.com",
+                projectId: "lords-table-games",
+                storageBucket: "lords-table-games.firebasestorage.app",
+                messagingSenderId: "33507651819",
+                appId: "1:33507651819:web:c50a846527a5743fb7ceae",
+                measurementId: "G-CYT2ZS2K8B"
+            };
 
-            // Check if Firebase custom config is saved
-            const storedFirebase = localStorage.getItem('lords_table_firebase_config');
-            if (storedFirebase) {
-                try {
-                    const cfg = JSON.parse(storedFirebase);
-                    if (cfg && cfg.apiKey && cfg.projectId) {
-                        this.initFirestore(cfg);
-                        return;
-                    }
-                } catch(e) {}
+            try {
+                await this.initFirestore(firebaseConfig);
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                this.initLocalBus();
+                this.updateStatusUI('Firebase unavailable — Local Tab Bus', 'bg-amber-400');
             }
-
-            // Default to Local Browser Bus (BroadcastChannel + LocalStorage)
-            this.initLocalBus();
         }
 
         initLocalBus() {
@@ -638,22 +627,24 @@
             this.updateStatusUI('Local Tab Bus (Multi-window ready)', 'bg-purpleAccent');
         }
 
-        initFirestore(cfg) {
-            try {
-                this.mode = 'firestore';
-                const existing = getApps();
-                if (existing.length > 0) deleteApp(existing[0]);
-                const fbApp = initializeApp(cfg);
-                this.firebaseAuth = getAuth(fbApp);
-                this.firebaseDb = getFirestore(fbApp);
-                signInAnonymously(this.firebaseAuth).catch(err => {
-                    console.warn("Firestore anonymous auth notice:", err.message);
-                });
-                this.updateStatusUI('Cloud Firestore Live', 'bg-emerald-500');
-            } catch(e) {
-                console.warn("Falling back to local bus:", e);
-                this.initLocalBus();
+        async initFirestore(cfg) {
+            this.mode = 'firestore';
+            const existing = getApps();
+            if (existing.length > 0) {
+                await Promise.all(existing.map(app => deleteApp(app)));
             }
+
+            const fbApp = initializeApp(cfg);
+            this.firebaseAuth = getAuth(fbApp);
+            this.firebaseDb = getFirestore(fbApp);
+
+            // Firestore rules require request.auth != null, so do not mark the
+            // cloud connection ready until anonymous authentication completes.
+            if (!this.firebaseAuth.currentUser) {
+                await signInAnonymously(this.firebaseAuth);
+            }
+
+            this.updateStatusUI('Cloud Firestore Live', 'bg-emerald-500');
         }
 
         updateStatusUI(text, dotColor = 'bg-emerald-500') {
@@ -754,6 +745,34 @@
                 const raw = localStorage.getItem(`lords_table_game_${code}`);
                 return raw ? JSON.parse(raw) : null;
             }
+        }
+
+        // Small, atomic Firestore writes prevent simultaneous players from
+        // overwriting each other's answers or roster entries.
+        async updatePlayer(gameCode, playerId, player) {
+            const code = gameCode.toUpperCase();
+            if (this.mode === 'firestore' && this.firebaseDb) {
+                const docRef = doc(this.firebaseDb, 'games', code);
+                await updateDoc(docRef, { [`players.${playerId}`]: player, updatedAt: Date.now() });
+                return;
+            }
+            const data = await this.get(code);
+            if (!data) throw new Error('Game not found');
+            const players = { ...(data.players || {}), [playerId]: player };
+            await this.publish(code, { ...data, players });
+        }
+
+        async updateResponse(gameCode, playerId, answer) {
+            const code = gameCode.toUpperCase();
+            if (this.mode === 'firestore' && this.firebaseDb) {
+                const docRef = doc(this.firebaseDb, 'games', code);
+                await updateDoc(docRef, { [`responses.${playerId}`]: answer, updatedAt: Date.now() });
+                return;
+            }
+            const data = await this.get(code);
+            if (!data) throw new Error('Game not found');
+            const responses = { ...(data.responses || {}), [playerId]: answer };
+            await this.publish(code, { ...data, responses });
         }
     }
 
@@ -1044,16 +1063,16 @@
                 const pId = window.appState.playerId;
                 const players = gameData.players || {};
 
-                // Preserve existing score on reconnect
+                // Preserve the player's cumulative event score on reconnect.
                 const currentScore = players[pId] ? players[pId].score : 0;
-                players[pId] = {
+                const playerRecord = {
                     id: pId,
                     name: name,
                     score: currentScore,
-                    joinedAt: Date.now()
+                    joinedAt: players[pId]?.joinedAt || Date.now()
                 };
 
-                await net.publish(code, { ...gameData, players });
+                await net.updatePlayer(code, pId, playerRecord);
 
                 window.appState.role = 'player';
                 window.appState.playerName = name;
@@ -1258,45 +1277,49 @@
                     timerSeconds = parseInt(timerSetting, 10);
                 }
 
-                // Filter & shuffle selected questions
-                let pool = [...window.appState.questionBank];
-                if (gameType !== 'MIX') {
-                    pool = pool.filter(q => q.type === gameType);
-                }
-                if (difficulty !== 'ALL') {
-                    const filtered = pool.filter(q => q.difficulty === difficulty);
-                    if (filtered.length > 0) pool = filtered;
-                }
+                // Build an event sequence. MIX means all three Bible games run
+                // under ONE code, with the same players and cumulative scores.
+                const sequenceTypes = gameType === 'MIX'
+                    ? ['AGREE_DISAGREE', 'CATEGORIES', 'ORDER']
+                    : [gameType];
+                const gamePools = {};
 
-                // Shuffle array
-                pool.sort(() => Math.random() - 0.5);
+                sequenceTypes.forEach(type => {
+                    let typePool = window.appState.questionBank.filter(q => q.type === type);
+                    if (difficulty !== 'ALL') {
+                        const filtered = typePool.filter(q => q.difficulty === difficulty);
+                        if (filtered.length > 0) typePool = filtered;
+                    }
+                    typePool = [...typePool].sort(() => Math.random() - 0.5);
+                    if (roundCountSetting !== 'ALL') {
+                        typePool = typePool.slice(0, parseInt(roundCountSetting, 10));
+                    }
+                    gamePools[type] = typePool;
+                });
 
-                // Limit by round count
-                if (roundCountSetting !== 'ALL') {
-                    const maxCount = parseInt(roundCountSetting, 10);
-                    pool = pool.slice(0, maxCount);
-                }
-
-                if (pool.length === 0) {
-                    pool = [...window.appState.questionBank].slice(0, 5);
-                }
+                const firstType = sequenceTypes[0];
+                const firstPool = gamePools[firstType] || [];
+                if (firstPool.length === 0) throw new Error('No questions available for the selected game.');
 
                 // Generate 4-digit code
                 const shortCode = Math.floor(1000 + Math.random() * 9000).toString();
 
                 const newGame = {
                     code: shortCode,
-                    gameType: gameType,
+                    gameType: firstType,
+                    gameSequence: sequenceTypes,
+                    currentGameIndex: 0,
+                    gamePools: gamePools,
                     participantMode: participantMode,
-                    status: 'LOBBY', // 'LOBBY' | 'QUESTION' | 'TIME_UP' | 'REVEALED' | 'ENDED'
+                    status: 'LOBBY', // LOBBY | QUESTION | TIME_UP | REVEALED | GAME_COMPLETE | ENDED
                     timerLength: timerSeconds,
                     timerRemaining: timerSeconds,
                     timerEndsAt: null,
                     timerRunning: false,
                     currentQuestionIndex: 0,
-                    questions: pool,
+                    questions: firstPool,
                     players: {},
-                    responses: {}, // { [playerId]: response }
+                    responses: {},
                     showLeaderboard: false,
                     createdAt: Date.now()
                 };
@@ -1324,6 +1347,29 @@
             const container = document.getElementById('main-content');
             const playersList = Object.values(data.players || {});
             const currentQ = data.questions[data.currentQuestionIndex];
+            const gameLabels = { AGREE_DISAGREE: 'Agree or Disagree', CATEGORIES: 'Bible Categories', ORDER: 'Arrange Bible Stories' };
+
+            if (data.status === 'GAME_COMPLETE' || data.status === 'ENDED') {
+                const sortedPlayers = [...playersList].sort((a,b) => (b.score || 0) - (a.score || 0));
+                const sequence = data.gameSequence || [data.gameType];
+                const nextType = sequence[(data.currentGameIndex || 0) + 1];
+                const final = data.status === 'ENDED';
+                container.innerHTML = `
+                    <div class="max-w-xl mx-auto w-full bg-cardBg p-6 sm:p-8 rounded-3xl border border-borderMuted card-shadow space-y-6 animate-fade-in">
+                        <div class="text-center space-y-2">
+                            <div class="text-5xl">${final ? '🏆' : '🎉'}</div>
+                            <h2 class="font-serif-title text-3xl font-extrabold text-espresso">${final ? 'FINAL RESULTS' : `${gameLabels[data.gameType] || 'GAME'} COMPLETE`}</h2>
+                            <p class="text-sm font-semibold text-mutedBronze">${final ? 'Combined points from the entire Bible Games session' : `Scores carry forward. Up next: ${gameLabels[nextType] || nextType}`}</p>
+                        </div>
+                        <div class="space-y-2">${sortedPlayers.map((p,i) => `
+                            <div class="flex justify-between items-center p-4 bg-cream rounded-2xl border border-borderMuted">
+                                <span class="font-bold text-espresso">${i+1}. ${p.name}</span>
+                                <span class="font-mono font-extrabold text-purpleAccent">${p.score || 0} pts</span>
+                            </div>`).join('')}</div>
+                        ${!final ? `<button onclick="app.hostStartNextGame()" class="w-full py-4 bg-purpleAccent hover:bg-purpleHover text-cream font-extrabold text-lg rounded-2xl shadow-xl border-2 border-goldAccent">START ${gameLabels[nextType]?.toUpperCase() || 'NEXT GAME'} →</button>` : `<button onclick="app.hostResetOrEndGame()" class="w-full py-4 bg-espresso text-cream font-bold rounded-2xl">END EVENT SESSION</button>`}
+                    </div>`;
+                return;
+            }
 
             // 1. HOST LOBBY
             if (data.status === 'LOBBY') {
@@ -1390,7 +1436,7 @@
                     <div class="bg-cardBg p-4 sm:p-5 rounded-2xl border border-borderMuted card-shadow flex flex-col sm:flex-row justify-between items-center gap-4">
                         <div class="flex items-center gap-3">
                             <span class="px-3 py-1 bg-purpleSoft text-purpleAccent font-extrabold text-xs rounded-full border border-purpleAccent/20">
-                                Round ${data.currentQuestionIndex + 1} / ${data.questions.length}
+                                ${gameLabels[data.gameType] || data.gameType} · ${data.currentQuestionIndex + 1} / ${data.questions.length}
                             </span>
                             <span class="text-xs font-bold text-mutedBronze uppercase tracking-wider">
                                 ${currentQ.type.replace('_', ' ')}
@@ -1568,6 +1614,22 @@
             const myResponse = data.responses ? data.responses[pId] : null;
             const currentQ = data.questions[data.currentQuestionIndex];
             const playersList = Object.values(data.players || {});
+            const gameLabels = { AGREE_DISAGREE: 'Agree or Disagree', CATEGORIES: 'Bible Categories', ORDER: 'Arrange Bible Stories' };
+
+            if (data.status === 'GAME_COMPLETE' || data.status === 'ENDED') {
+                const sequence = data.gameSequence || [data.gameType];
+                const nextType = sequence[(data.currentGameIndex || 0) + 1];
+                const final = data.status === 'ENDED';
+                container.innerHTML = `
+                    <div class="max-w-md mx-auto w-full bg-cardBg p-7 rounded-3xl border border-borderMuted card-shadow text-center space-y-6 animate-fade-in">
+                        <div class="text-5xl">${final ? '🏆' : '🎉'}</div>
+                        <div><h2 class="font-serif-title text-3xl font-extrabold text-espresso">${final ? 'BIBLE GAMES COMPLETE!' : `${gameLabels[data.gameType] || 'GAME'} COMPLETE`}</h2>
+                        <p class="text-sm font-semibold text-mutedBronze mt-2">${final ? 'Here is your final combined score.' : `Up next: ${gameLabels[nextType] || nextType}`}</p></div>
+                        <div class="bg-purpleSoft border border-purpleAccent/20 p-5 rounded-2xl"><div class="text-xs font-bold text-purpleAccent uppercase">YOUR TOTAL SCORE</div><div class="text-4xl font-extrabold text-espresso font-mono">${myPlayer.score || 0} PTS</div></div>
+                        <p class="text-xs text-mutedBronze">${final ? 'Thanks for playing! 🎊' : 'Stay on this screen — the host will start the next game.'}</p>
+                    </div>`;
+                return;
+            }
 
             // 1. BROADCASTED LEADERBOARD
             if (data.showLeaderboard) {
@@ -1682,7 +1744,7 @@
                 <div class="max-w-md mx-auto w-full space-y-5 animate-fade-in">
                     <!-- Top Bar: Timer -->
                     <div class="bg-cardBg p-4 rounded-2xl border border-borderMuted card-shadow flex justify-between items-center">
-                        <span class="text-xs font-extrabold text-mutedBronze uppercase tracking-wider">Round ${data.currentQuestionIndex + 1}</span>
+                        <span class="text-xs font-extrabold text-mutedBronze uppercase tracking-wider">${gameLabels[data.gameType] || data.gameType} · ${data.currentQuestionIndex + 1}/${data.questions.length}</span>
                         <div id="player-timer-display" class="font-mono text-2xl font-extrabold ${data.timerRemaining <= 5 ? 'timer-pulse text-terracotta' : 'text-espresso'}">
                             ⏱ 00:${data.timerRemaining < 10 ? '0' : ''}${data.timerRemaining}
                         </div>
@@ -1866,8 +1928,9 @@
                 return;
             }
 
-            responses[pId] = answer;
-            await net.publish(data.code, { ...data, responses });
+            // Write only this player's response instead of replacing the whole
+            // shared game document. This is safer when 20–30 people answer together.
+            await net.updateResponse(data.code, pId, answer);
             sound.playJoin();
             this.showToast("Answer Locked 🔒", "fa-lock");
         },
@@ -1899,11 +1962,16 @@
             const data = window.appState.currentGameData;
             if (!data) return;
             sound.playJoin();
+            const seconds = data.timerLength || 20;
             await net.publish(data.code, {
                 ...data,
                 status: 'QUESTION',
                 currentQuestionIndex: 0,
-                responses: {}
+                responses: {},
+                timerRemaining: seconds,
+                timerRunning: true,
+                timerEndsAt: Date.now() + (seconds * 1000),
+                showLeaderboard: false
             });
         },
 
@@ -2002,24 +2070,59 @@
             const nextIdx = data.currentQuestionIndex + 1;
 
             if (nextIdx >= data.questions.length) {
-                this.showToast("All questions completed!", "fa-flag-checkered");
+                const sequence = data.gameSequence || [data.gameType];
+                const isFinalGame = (data.currentGameIndex || 0) >= sequence.length - 1;
+                this.showToast(isFinalGame ? "All games completed!" : "Game complete!", "fa-flag-checkered");
                 sound.playCorrect();
                 await net.publish(data.code, {
                     ...data,
-                    showLeaderboard: true,
-                    status: 'ENDED'
+                    showLeaderboard: false,
+                    timerRunning: false,
+                    timerEndsAt: null,
+                    status: isFinalGame ? 'ENDED' : 'GAME_COMPLETE'
                 });
             } else {
+                const seconds = data.timerLength || 20;
                 await net.publish(data.code, {
                     ...data,
                     currentQuestionIndex: nextIdx,
                     status: 'QUESTION',
-                    timerRemaining: data.timerLength || 20,
-                    timerEndsAt: null,
-                    timerRunning: false,
-                    responses: {}
+                    timerRemaining: seconds,
+                    timerEndsAt: Date.now() + (seconds * 1000),
+                    timerRunning: true,
+                    responses: {},
+                    showLeaderboard: false
                 });
             }
+        },
+
+        hostStartNextGame: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            const sequence = data.gameSequence || [data.gameType];
+            const nextGameIndex = (data.currentGameIndex || 0) + 1;
+            if (nextGameIndex >= sequence.length) return;
+
+            const nextType = sequence[nextGameIndex];
+            const nextQuestions = (data.gamePools && data.gamePools[nextType]) || [];
+            if (!nextQuestions.length) {
+                this.showToast("No questions available for the next game.", "fa-triangle-exclamation");
+                return;
+            }
+            const seconds = data.timerLength || 20;
+            await net.publish(data.code, {
+                ...data,
+                gameType: nextType,
+                currentGameIndex: nextGameIndex,
+                questions: nextQuestions,
+                currentQuestionIndex: 0,
+                responses: {},
+                status: 'QUESTION',
+                timerRemaining: seconds,
+                timerRunning: true,
+                timerEndsAt: Date.now() + (seconds * 1000),
+                showLeaderboard: false
+            });
         },
 
         hostToggleLeaderboard: async function() {
