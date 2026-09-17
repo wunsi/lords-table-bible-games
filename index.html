@@ -788,6 +788,7 @@
         currentGameData: null,
         timerLocalInterval: null,
         sortableInstance: null,
+        activeTimerEndsAt: null,
         selectedQuestionIds: null, // null means use all
         questionBank: loadSavedQuestions()
     };
@@ -874,67 +875,99 @@
             net.subscribe(code, (data) => {
                 if (!data) return;
                 window.appState.currentGameData = data;
-                this.syncLocalTimer(data);
 
+                // Render first so the timer elements exist before we update them.
                 if (window.appState.role === 'host') {
                     this.renderHostDashboard(data);
                 } else {
                     this.renderPlayerScreen(data);
                 }
+
+                this.syncLocalTimer(data);
             });
         },
 
         // Timer Synchronization
         syncLocalTimer: function(data) {
+            const paintTimer = () => {
+                const liveData = window.appState.currentGameData || data;
+                const endAt = liveData.timerEndsAt;
+                const secondsLeft = (liveData.timerRunning && endAt)
+                    ? Math.max(0, Math.ceil((endAt - Date.now()) / 1000))
+                    : Math.max(0, liveData.timerRemaining || 0);
+
+                const timerDisplays = [
+                    document.getElementById('timer-display'),
+                    document.getElementById('player-timer-display')
+                ];
+
+                timerDisplays.forEach(el => {
+                    if (!el) return;
+                    const prefix = el.id === 'player-timer-display' ? '⏱ ' : '';
+                    el.innerText = `${prefix}00:${secondsLeft < 10 ? '0' : ''}${secondsLeft}`;
+                    if (secondsLeft <= 5 && secondsLeft > 0 && liveData.timerRunning) {
+                        el.classList.add('timer-pulse');
+                    } else {
+                        el.classList.remove('timer-pulse');
+                    }
+                });
+
+                return secondsLeft;
+            };
+
+            // Paint immediately after every Firestore render. This prevents the
+            // display jumping back to the original timer length when an answer arrives.
+            let secondsLeft = paintTimer();
+
+            if (!data.timerRunning || !data.timerEndsAt) {
+                if (window.appState.timerLocalInterval) {
+                    clearInterval(window.appState.timerLocalInterval);
+                    window.appState.timerLocalInterval = null;
+                }
+                window.appState.activeTimerEndsAt = null;
+                return;
+            }
+
+            // Player answers update the same Firestore game document. Do not restart
+            // the countdown for every answer snapshot; keep one interval per round.
+            if (window.appState.timerLocalInterval && window.appState.activeTimerEndsAt === data.timerEndsAt) {
+                return;
+            }
+
             if (window.appState.timerLocalInterval) {
                 clearInterval(window.appState.timerLocalInterval);
-                window.appState.timerLocalInterval = null;
             }
+            window.appState.activeTimerEndsAt = data.timerEndsAt;
 
-            if (data.timerRunning && data.timerEndsAt) {
-                const tick = () => {
-                    const now = Date.now();
-                    const secondsLeft = Math.max(0, Math.ceil((data.timerEndsAt - now) / 1000));
-                    
-                    const timerDisplays = [
-                        document.getElementById('timer-display'),
-                        document.getElementById('player-timer-display')
-                    ];
+            window.appState.timerLocalInterval = setInterval(async () => {
+                const liveData = window.appState.currentGameData;
+                if (!liveData || !liveData.timerRunning || !liveData.timerEndsAt) return;
 
-                    timerDisplays.forEach(el => {
-                        if (el) {
-                            el.innerText = `00:${secondsLeft < 10 ? '0' : ''}${secondsLeft}`;
-                            if (secondsLeft <= 5 && secondsLeft > 0) {
-                                el.classList.add('timer-pulse');
-                                sound.playUrgentTick();
-                            } else {
-                                el.classList.remove('timer-pulse');
-                                if (secondsLeft > 5) sound.playTick();
-                            }
-                        }
-                    });
+                const previous = secondsLeft;
+                secondsLeft = paintTimer();
+                if (secondsLeft !== previous) {
+                    if (secondsLeft <= 5 && secondsLeft > 0) sound.playUrgentTick();
+                    else if (secondsLeft > 5) sound.playTick();
+                }
 
-                    if (secondsLeft <= 0) {
-                        clearInterval(window.appState.timerLocalInterval);
-                        window.appState.timerLocalInterval = null;
-                        sound.playTimeUp();
+                if (secondsLeft <= 0) {
+                    clearInterval(window.appState.timerLocalInterval);
+                    window.appState.timerLocalInterval = null;
+                    window.appState.activeTimerEndsAt = null;
+                    sound.playTimeUp();
 
-                        // Host marks round expired
-                        if (window.appState.role === 'host' && data.status !== 'TIME_UP' && data.status !== 'REVEALED') {
-                            net.publish(data.code, {
-                                ...data,
-                                timerRunning: false,
-                                timerRemaining: 0,
-                                timerEndsAt: null,
-                                status: 'TIME_UP'
-                            });
-                        }
+                    // Only the host closes the round. Publish only timer/status fields
+                    // so a stale timer callback can never overwrite players/responses.
+                    if (window.appState.role === 'host' && liveData.status !== 'TIME_UP' && liveData.status !== 'REVEALED') {
+                        await net.publish(liveData.code, {
+                            timerRunning: false,
+                            timerRemaining: 0,
+                            timerEndsAt: null,
+                            status: 'TIME_UP'
+                        });
                     }
-                };
-
-                tick();
-                window.appState.timerLocalInterval = setInterval(tick, 1000);
-            }
+                }
+            }, 250);
         },
 
         // =====================================================================
