@@ -1,0 +1,2361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>THE LORD’S TABLE — BIBLE GAMES</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: '#FBF8F3',
+                        creamDark: '#F3EDE2',
+                        espresso: '#241A15',
+                        espressoLight: '#3D2D24',
+                        mutedBronze: '#7D6B5D',
+                        purpleAccent: '#5C2483',
+                        purpleHover: '#4A1C6A',
+                        purpleSoft: '#F4EDF8',
+                        goldAccent: '#C5A059',
+                        goldHover: '#B28E46',
+                        goldLight: '#FBF5E8',
+                        terracotta: '#C85A32',
+                        emeraldAccent: '#2A7A4C',
+                        cardBg: '#FFFFFF',
+                        borderMuted: '#EFE7DB'
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'Georgia', 'serif'],
+                        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,500;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+    <!-- Sortable JS for Touch Drag-and-Drop -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+
+    <style>
+        body {
+            background-color: #FBF8F3;
+            color: #241A15;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .font-serif-title {
+            font-family: 'Playfair Display', Georgia, serif;
+        }
+        .timer-pulse {
+            animation: pulse-urgent 0.8s infinite;
+        }
+        @keyframes pulse-urgent {
+            0%, 100% { transform: scale(1); color: #C85A32; }
+            50% { transform: scale(1.12); color: #E53E3E; text-shadow: 0 0 12px rgba(200, 90, 50, 0.4); }
+        }
+        .sortable-ghost {
+            opacity: 0.35;
+            background-color: #F4EDF8 !important;
+            border: 2px dashed #5C2483 !important;
+        }
+        .card-shadow {
+            box-shadow: 0 10px 30px -5px rgba(36, 26, 21, 0.06), 0 4px 12px -2px rgba(36, 26, 21, 0.04);
+        }
+        .card-shadow-lg {
+            box-shadow: 0 20px 40px -10px rgba(36, 26, 21, 0.12), 0 6px 16px -4px rgba(36, 26, 21, 0.06);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FBF8F3;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #C5A059;
+            border-radius: 9999px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-purpleAccent selection:text-white antialiased">
+
+<div id="app" class="min-h-screen flex flex-col justify-between max-w-md mx-auto sm:max-w-xl md:max-w-2xl lg:max-w-3xl px-4 py-5 w-full">
+    
+    <!-- Top Header Bar -->
+    <header class="flex items-center justify-between pb-3.5 border-b border-borderMuted mb-5">
+        <div class="flex items-center gap-2.5 cursor-pointer select-none" onclick="app.goHome()">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purpleAccent to-purpleHover text-goldAccent flex items-center justify-center font-serif-title font-bold text-xl shadow-md border border-goldAccent/30">
+                ✝
+            </div>
+            <div>
+                <h1 class="font-serif-title font-extrabold text-lg sm:text-xl text-espresso leading-none tracking-tight">
+                    THE LORD’S TABLE
+                </h1>
+                <p class="text-[10px] sm:text-xs text-goldAccent font-bold tracking-widest uppercase mt-0.5">Bible Games</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Audio Mute Toggle Button -->
+            <button id="btn-sound-toggle" onclick="app.toggleSound()" title="Toggle Sound" class="p-2 w-9 h-9 flex items-center justify-center rounded-xl bg-cardBg border border-borderMuted text-espresso/70 hover:text-purpleAccent hover:border-purpleAccent transition text-sm">
+                <i class="fa-solid fa-volume-high"></i>
+            </button>
+
+            <!-- Role Badge / Active Session Tag -->
+            <div id="nav-badge" class="hidden flex items-center gap-1.5">
+                <span id="role-tag" class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-purpleSoft text-purpleAccent border border-purpleAccent/20">
+                    Player
+                </span>
+                <span id="game-code-tag" class="px-2.5 py-1 text-[11px] font-mono font-extrabold rounded-full bg-espresso text-cream">
+                    #----
+                </span>
+            </div>
+
+            <!-- Settings / Backend Status Button -->
+            <button onclick="app.showConfigModal()" title="Network & Firebase Settings" class="p-2 w-9 h-9 flex items-center justify-center rounded-xl bg-cardBg border border-borderMuted text-espresso/70 hover:text-purpleAccent hover:border-purpleAccent transition text-sm">
+                <i class="fa-solid fa-sliders"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main id="main-content" class="flex-1 flex flex-col justify-center py-2">
+        <!-- Dynamic Views Injected Here -->
+    </main>
+
+    <!-- Footer Bar -->
+    <footer class="mt-6 pt-3.5 border-t border-borderMuted text-center text-xs text-mutedBronze flex flex-col sm:flex-row justify-between items-center gap-2">
+        <p class="font-medium">The Lord’s Table — Live Bible Games</p>
+        <p id="connection-status" class="flex items-center gap-1.5 cursor-pointer font-medium" onclick="app.showConfigModal()">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Checking network...</span>
+        </p>
+    </footer>
+</div>
+
+<!-- Global Toast Notification -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 opacity-0 pointer-events-none transform translate-y-4 max-w-sm w-[92%] sm:w-auto">
+    <div id="toast-body" class="bg-espresso text-cream px-5 py-3 rounded-2xl shadow-2xl text-sm font-semibold flex items-center gap-3 border border-goldAccent/40">
+        <i id="toast-icon" class="fa-solid fa-circle-info text-goldAccent text-base"></i>
+        <span id="toast-msg" class="break-words leading-tight">Message goes here</span>
+    </div>
+</div>
+
+<!-- Network & Firebase Config Modal -->
+<div id="config-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-cardBg max-w-md w-full p-6 sm:p-7 rounded-3xl border border-borderMuted card-shadow-lg space-y-4 animate-fade-in">
+        <div class="flex justify-between items-center border-b border-borderMuted pb-3">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-purpleSoft text-purpleAccent flex items-center justify-center">
+                    <i class="fa-solid fa-network-wired"></i>
+                </div>
+                <h3 class="font-serif-title text-xl font-bold text-espresso">Network Connection</h3>
+            </div>
+            <button onclick="app.closeConfigModal()" class="text-espresso/50 hover:text-espresso text-lg p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="space-y-3 text-xs text-espresso/80 leading-relaxed">
+            <div class="p-3 bg-cream rounded-2xl border border-borderMuted space-y-1">
+                <span class="font-bold text-espresso block">Active Real-Time Engine:</span>
+                <span id="modal-active-engine" class="font-mono text-purpleAccent font-bold">Checking...</span>
+            </div>
+
+            <div>
+                <p class="font-semibold text-espresso">Three ways to connect:</p>
+                <ol class="list-decimal list-inside space-y-1 mt-1 text-mutedBronze">
+                    <li><strong class="text-espresso">Local Node Server</strong>: Run <code class="bg-cream px-1.5 py-0.5 rounded text-purpleAccent font-mono">node server.js</code> for instant WiFi play.</li>
+                    <li><strong class="text-espresso">Cloud Firebase</strong>: Paste your Firebase web config below for Vercel/cloud hosting.</li>
+                    <li><strong class="text-espresso">Local Tab Bus</strong>: Works right in your browser tabs with zero setup for quick preview testing!</li>
+                </ol>
+            </div>
+
+            <div class="space-y-1.5 pt-1">
+                <label class="block font-bold uppercase tracking-wider text-[11px] text-espresso">
+                    Optional Firebase Web Config (JSON)
+                </label>
+                <textarea id="input-firebase-config-json" rows="5" placeholder='{ "apiKey": "...", "projectId": "..." }' class="w-full p-3 font-mono text-[11px] bg-cream border-2 border-borderMuted rounded-xl focus:border-purpleAccent focus:outline-none"></textarea>
+            </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+            <button onclick="app.saveCustomFirebaseConfig()" class="flex-1 py-3 bg-purpleAccent hover:bg-purpleHover text-cream font-bold text-xs rounded-xl shadow-md transition">
+                Save & Connect Cloud
+            </button>
+            <button onclick="app.useLocalEngine()" class="px-3 py-3 bg-cream border border-borderMuted hover:bg-borderMuted text-espresso text-xs font-semibold rounded-xl">
+                Use Local Bus
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Question Bank Add/Edit Modal -->
+<div id="qb-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-cardBg max-w-lg w-full p-6 sm:p-7 rounded-3xl border border-borderMuted card-shadow-lg space-y-4 my-8 max-h-[90vh] overflow-y-auto animate-fade-in">
+        <div class="flex justify-between items-center border-b border-borderMuted pb-3">
+            <h3 id="qb-modal-title" class="font-serif-title text-xl font-bold text-espresso">Add Bible Question</h3>
+            <button onclick="app.closeQuestionModal()" class="text-espresso/50 hover:text-espresso text-lg p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="qb-form" onsubmit="app.handleSaveQuestion(event)" class="space-y-4 text-xs">
+            <input type="hidden" id="qb-edit-id" value="">
+
+            <div>
+                <label class="block font-bold uppercase tracking-wider text-espresso/80 mb-1">GAME MODE</label>
+                <select id="qb-type" onchange="app.renderQuestionFormFields()" class="w-full px-3 py-2.5 bg-cream border-2 border-borderMuted rounded-xl font-semibold text-espresso focus:border-purpleAccent focus:outline-none">
+                    <option value="AGREE_DISAGREE">👍 👎 AGREE OR DISAGREE</option>
+                    <option value="CATEGORIES">📚 BIBLE CATEGORIES</option>
+                    <option value="ORDER">⏳ PUT IT IN ORDER</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block font-bold uppercase tracking-wider text-espresso/80 mb-1">DIFFICULTY</label>
+                <select id="qb-difficulty" class="w-full px-3 py-2.5 bg-cream border-2 border-borderMuted rounded-xl font-semibold text-espresso focus:border-purpleAccent focus:outline-none">
+                    <option value="EASY">EASY</option>
+                    <option value="MEDIUM" selected>MEDIUM</option>
+                    <option value="HARD">HARD</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Fields Container based on Game Mode -->
+            <div id="qb-fields" class="space-y-3"></div>
+
+            <div class="flex gap-2 pt-2">
+                <button type="submit" class="flex-1 py-3 bg-purpleAccent hover:bg-purpleHover text-cream font-bold rounded-xl shadow-md transition">
+                    Save Question
+                </button>
+                <button type="button" onclick="app.closeQuestionModal()" class="px-4 py-3 bg-cream border border-borderMuted hover:bg-borderMuted text-espresso font-semibold rounded-xl">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =========================================================================
+     APPLICATION LOGIC (ES MODULE)
+     ========================================================================= -->
+<script type="module">
+    import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- Web Audio API Sound Synthesizer ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.muted = localStorage.getItem('lords_table_muted') === 'true';
+        }
+        init() {
+            if (!this.ctx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) this.ctx = new AudioContext();
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume();
+            }
+        }
+        playTone(freq, duration = 0.15, type = 'sine', gainVal = 0.1) {
+            if (this.muted) return;
+            try {
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            } catch(e) {}
+        }
+        playJoin() {
+            this.playTone(523.25, 0.12, 'triangle', 0.1); // C5
+            setTimeout(() => this.playTone(659.25, 0.25, 'triangle', 0.1), 100); // E5
+        }
+        playTick() {
+            this.playTone(800, 0.04, 'sine', 0.04);
+        }
+        playUrgentTick() {
+            this.playTone(1100, 0.08, 'triangle', 0.15);
+        }
+        playTimeUp() {
+            this.playTone(330, 0.4, 'sawtooth', 0.12);
+            setTimeout(() => this.playTone(220, 0.6, 'sawtooth', 0.14), 180);
+        }
+        playCorrect() {
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 arpeggio
+            notes.forEach((freq, idx) => {
+                setTimeout(() => this.playTone(freq, 0.35, 'triangle', 0.12), idx * 80);
+            });
+        }
+        playWrong() {
+            this.playTone(350, 0.2, 'sawtooth', 0.08);
+            setTimeout(() => this.playTone(280, 0.35, 'sawtooth', 0.08), 120);
+        }
+    }
+    const sound = new SoundFX();
+
+    // --- Curated Authentic Bible Question Bank (30 Questions) ---
+    const DEFAULT_QUESTIONS = [
+        // 1. AGREE OR DISAGREE
+        {
+            id: "ad_1",
+            type: "AGREE_DISAGREE",
+            difficulty: "EASY",
+            statement: "Daniel spent three days and three nights inside a great fish.",
+            correctAnswer: "DISAGREE",
+            explanation: "It was Jonah, not Daniel, who was inside the great fish.",
+            scripture: "Jonah 1:17"
+        },
+        {
+            id: "ad_2",
+            type: "AGREE_DISAGREE",
+            difficulty: "EASY",
+            statement: "Jesus turned water into wine at a wedding in Cana of Galilee.",
+            correctAnswer: "AGREE",
+            explanation: "This was the first of Jesus' miraculous signs, revealing His glory.",
+            scripture: "John 2:1-11"
+        },
+        {
+            id: "ad_3",
+            type: "AGREE_DISAGREE",
+            difficulty: "MEDIUM",
+            statement: "The Apostle Paul wrote the Book of Revelation while exiled on the Island of Patmos.",
+            correctAnswer: "DISAGREE",
+            explanation: "The Apostle John was exiled on Patmos and received the Revelation of Jesus Christ.",
+            scripture: "Revelation 1:9"
+        },
+        {
+            id: "ad_4",
+            type: "AGREE_DISAGREE",
+            difficulty: "EASY",
+            statement: "Methuselah lived to be 969 years old, making him the longest-lived man in Scripture.",
+            correctAnswer: "AGREE",
+            explanation: "Genesis records that all the days of Methuselah were 969 years, and he died.",
+            scripture: "Genesis 5:27"
+        },
+        {
+            id: "ad_5",
+            type: "AGREE_DISAGREE",
+            difficulty: "MEDIUM",
+            statement: "The Ark of the Covenant contained only the two stone tablets of the Ten Commandments.",
+            correctAnswer: "DISAGREE",
+            explanation: "According to Hebrews 9:4, it held the golden jar of manna, Aaron’s staff that budded, and the tablets of the covenant.",
+            scripture: "Hebrews 9:4"
+        },
+        {
+            id: "ad_6",
+            type: "AGREE_DISAGREE",
+            difficulty: "EASY",
+            statement: "David defeated the giant Goliath using a slingshot and five smooth stones.",
+            correctAnswer: "AGREE",
+            explanation: "David struck the Philistine with a stone from his sling, hitting his forehead.",
+            scripture: "1 Samuel 17:40-50"
+        },
+        {
+            id: "ad_7",
+            type: "AGREE_DISAGREE",
+            difficulty: "MEDIUM",
+            statement: "Moses was permitted to enter the Promised Land after leading Israel for 40 years.",
+            correctAnswer: "DISAGREE",
+            explanation: "Moses viewed Canaan from Mount Nebo but died before entering due to striking the rock at Meribah.",
+            scripture: "Deuteronomy 34:1-5, Numbers 20:12"
+        },
+        {
+            id: "ad_8",
+            type: "AGREE_DISAGREE",
+            difficulty: "HARD",
+            statement: "Paul was a Roman citizen by birth.",
+            correctAnswer: "AGREE",
+            explanation: "Paul told the Roman commander that he was born a citizen of Rome.",
+            scripture: "Acts 22:28"
+        },
+        {
+            id: "ad_9",
+            type: "AGREE_DISAGREE",
+            difficulty: "HARD",
+            statement: "There were three wise men specifically named in the Gospel of Matthew.",
+            correctAnswer: "DISAGREE",
+            explanation: "Matthew mentions three gifts (gold, frankincense, and myrrh), but never specifies the number or names of the Magi.",
+            scripture: "Matthew 2:1-12"
+        },
+        {
+            id: "ad_10",
+            type: "AGREE_DISAGREE",
+            difficulty: "EASY",
+            statement: "Simon Peter walked on water toward Jesus before beginning to sink in fear.",
+            correctAnswer: "AGREE",
+            explanation: "Peter stepped out of the boat and walked on water, but when he saw the wind, he was afraid.",
+            scripture: "Matthew 14:29-30"
+        },
+
+        // 2. BIBLE CATEGORIES
+        {
+            id: "cat_1",
+            type: "CATEGORIES",
+            difficulty: "EASY",
+            prompt: "NAME 5 WOMEN IN THE OLD TESTAMENT",
+            minRequired: 5,
+            possibleAnswers: ["Sarah", "Rebekah", "Rachel", "Leah", "Ruth", "Esther", "Deborah", "Hannah", "Abigail", "Miriam", "Eve", "Bathsheba", "Rahab"]
+        },
+        {
+            id: "cat_2",
+            type: "CATEGORIES",
+            difficulty: "EASY",
+            prompt: "NAME 6 APOSTLES / DISCIPLES OF JESUS",
+            minRequired: 6,
+            possibleAnswers: ["Peter", "Andrew", "James (son of Zebedee)", "John", "Philip", "Bartholomew", "Thomas", "Matthew", "James (son of Alphaeus)", "Thaddaeus", "Simon the Zealot", "Judas Iscariot", "Matthias"]
+        },
+        {
+            id: "cat_3",
+            type: "CATEGORIES",
+            difficulty: "MEDIUM",
+            prompt: "NAME 5 OF THE 10 PLAGUES OF EGYPT",
+            minRequired: 5,
+            possibleAnswers: ["Blood (Water to Blood)", "Frogs", "Gnats / Lice", "Flies", "Death of Livestock", "Boils", "Hail & Fire", "Locusts", "Darkness", "Death of Firstborn"]
+        },
+        {
+            id: "cat_4",
+            type: "CATEGORIES",
+            difficulty: "EASY",
+            prompt: "NAME 5 FRUITS OF THE SPIRIT (GALATIANS 5)",
+            minRequired: 5,
+            possibleAnswers: ["Love", "Joy", "Peace", "Patience / Forbearance", "Kindness", "Goodness", "Faithfulness", "Gentleness", "Self-Control"]
+        },
+        {
+            id: "cat_5",
+            type: "CATEGORIES",
+            difficulty: "MEDIUM",
+            prompt: "NAME 4 BOOKS OF THE BIBLE WRITTEN BY PAUL",
+            minRequired: 4,
+            possibleAnswers: ["Romans", "1 Corinthians", "2 Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians", "1 Thessalonians", "2 Thessalonians", "1 Timothy", "2 Timothy", "Titus", "Philemon"]
+        },
+        {
+            id: "cat_6",
+            type: "CATEGORIES",
+            difficulty: "HARD",
+            prompt: "NAME 4 SONS OF JACOB (TRIBES OF ISRAEL)",
+            minRequired: 4,
+            possibleAnswers: ["Reuben", "Simeon", "Levi", "Judah", "Dan", "Naphtali", "Gad", "Asher", "Issachar", "Zebulun", "Joseph", "Benjamin"]
+        },
+        {
+            id: "cat_7",
+            type: "CATEGORIES",
+            difficulty: "MEDIUM",
+            prompt: "NAME 4 MOUNTAINS MENTIONED IN THE BIBLE",
+            minRequired: 4,
+            possibleAnswers: ["Mount Sinai / Horeb", "Mount Carmel", "Mount of Olives", "Mount Zion", "Mount Ararat", "Mount Nebo", "Mount Hermon", "Mount Moriah", "Mount Tabor"]
+        },
+        {
+            id: "cat_8",
+            type: "CATEGORIES",
+            difficulty: "HARD",
+            prompt: "NAME 4 MINOR PROPHET BOOKS OF THE OLD TESTAMENT",
+            minRequired: 4,
+            possibleAnswers: ["Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi"]
+        },
+
+        // 3. PUT IT IN ORDER (Chronological Events)
+        {
+            id: "ord_1",
+            type: "ORDER",
+            difficulty: "MEDIUM",
+            // The events are stored in their correct chronological order [0, 1, 2, 3]
+            events: [
+                "Noah builds the Ark",
+                "Moses receives the Ten Commandments at Mount Sinai",
+                "David is anointed King of Israel",
+                "Solomon builds the First Temple in Jerusalem"
+            ],
+            scripture: "Genesis 6 -> Exodus 20 -> 1 Samuel 16 -> 1 Kings 6"
+        },
+        {
+            id: "ord_2",
+            type: "ORDER",
+            difficulty: "EASY",
+            events: [
+                "God creates the heavens and the earth",
+                "The Great Flood covers the earth",
+                "Jesus is born in Bethlehem",
+                "The Holy Spirit falls at Pentecost"
+            ],
+            scripture: "Genesis 1 -> Genesis 7 -> Luke 2 -> Acts 2"
+        },
+        {
+            id: "ord_3",
+            type: "ORDER",
+            difficulty: "MEDIUM",
+            events: [
+                "Abraham is called to leave Ur of the Chaldeans",
+                "Joseph is sold into Egypt by his brothers",
+                "The Israelites cross the Red Sea",
+                "The walls of Jericho fall under Joshua"
+            ],
+            scripture: "Genesis 12 -> Genesis 37 -> Exodus 14 -> Joshua 6"
+        },
+        {
+            id: "ord_4",
+            type: "ORDER",
+            difficulty: "HARD",
+            events: [
+                "Elijah calls down fire on Mount Carmel",
+                "Isaiah prophesies about the Suffering Servant",
+                "Daniel survives the lions' den in Babylon",
+                "Nehemiah rebuilds the broken walls of Jerusalem"
+            ],
+            scripture: "1 Kings 18 -> Isaiah 53 -> Daniel 6 -> Nehemiah 6"
+        },
+        {
+            id: "ord_5",
+            type: "ORDER",
+            difficulty: "EASY",
+            events: [
+                "Jesus is baptized by John in the Jordan",
+                "Jesus feeds the 5,000 with loaves and fishes",
+                "The Last Supper with the disciples",
+                "The Resurrection of Jesus from the tomb"
+            ],
+            scripture: "Matthew 3 -> Matthew 14 -> Matthew 26 -> Matthew 28"
+        },
+        {
+            id: "ord_6",
+            type: "ORDER",
+            difficulty: "MEDIUM",
+            events: [
+                "Stephen is martyred for his faith",
+                "Saul is blinded on the road to Damascus",
+                "Paul and Silas sing in the Philippian jail",
+                "John receives the vision of the New Jerusalem"
+            ],
+            scripture: "Acts 7 -> Acts 9 -> Acts 16 -> Revelation 21"
+        }
+    ];
+
+    // Load question bank from localStorage or defaults
+    function loadSavedQuestions() {
+        const stored = localStorage.getItem('lords_table_questions');
+        if (stored) {
+            try { return JSON.parse(stored); } catch(e) {}
+        }
+        return DEFAULT_QUESTIONS;
+    }
+    function saveQuestions(list) {
+        localStorage.setItem('lords_table_questions', JSON.stringify(list));
+    }
+
+    // --- Networking Layer (Triple Engine: Local SSE Server, Cloud Firestore, Local Broadcast Bus) ---
+    class NetworkManager {
+        constructor() {
+            this.mode = 'detecting'; // 'server' | 'firestore' | 'localbus'
+            this.activeCode = null;
+            this.callback = null;
+            this.eventSource = null;
+            this.bus = null;
+            this.firestoreUnsub = null;
+            this.firebaseDb = null;
+            this.firebaseAuth = null;
+        }
+
+        async init() {
+            // Check if loaded via http/https and if local Node server is responding
+            if (window.location.protocol.startsWith('http')) {
+                try {
+                    const res = await fetch('/api/info', { signal: AbortSignal.timeout(1200) });
+                    if (res.ok) {
+                        const info = await res.json();
+                        if (info.status === 'ok') {
+                            this.mode = 'server';
+                            this.updateStatusUI('Local Event Server', 'bg-emerald-500');
+                            return;
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            // Check if Firebase custom config is saved
+            const storedFirebase = localStorage.getItem('lords_table_firebase_config');
+            if (storedFirebase) {
+                try {
+                    const cfg = JSON.parse(storedFirebase);
+                    if (cfg && cfg.apiKey && cfg.projectId) {
+                        this.initFirestore(cfg);
+                        return;
+                    }
+                } catch(e) {}
+            }
+
+            // Default to Local Browser Bus (BroadcastChannel + LocalStorage)
+            this.initLocalBus();
+        }
+
+        initLocalBus() {
+            this.mode = 'localbus';
+            if (window.BroadcastChannel) {
+                this.bus = new BroadcastChannel('lords_table_bus');
+                this.bus.onmessage = (e) => {
+                    if (e.data && e.data.code === this.activeCode && this.callback) {
+                        this.callback(e.data);
+                    }
+                };
+            }
+            window.addEventListener('storage', (e) => {
+                if (e.key === `lords_table_game_${this.activeCode}` && e.newValue && this.callback) {
+                    try { this.callback(JSON.parse(e.newValue)); } catch(err) {}
+                }
+            });
+            this.updateStatusUI('Local Tab Bus (Multi-window ready)', 'bg-purpleAccent');
+        }
+
+        initFirestore(cfg) {
+            try {
+                this.mode = 'firestore';
+                const existing = getApps();
+                if (existing.length > 0) deleteApp(existing[0]);
+                const fbApp = initializeApp(cfg);
+                this.firebaseAuth = getAuth(fbApp);
+                this.firebaseDb = getFirestore(fbApp);
+                signInAnonymously(this.firebaseAuth).catch(err => {
+                    console.warn("Firestore anonymous auth notice:", err.message);
+                });
+                this.updateStatusUI('Cloud Firestore Live', 'bg-emerald-500');
+            } catch(e) {
+                console.warn("Falling back to local bus:", e);
+                this.initLocalBus();
+            }
+        }
+
+        updateStatusUI(text, dotColor = 'bg-emerald-500') {
+            const el = document.getElementById('connection-status');
+            if (el) {
+                el.innerHTML = `
+                    <span class="w-2 h-2 rounded-full ${dotColor} animate-pulse"></span>
+                    <span class="text-espresso font-semibold">${text}</span>
+                `;
+            }
+            const modalEngine = document.getElementById('modal-active-engine');
+            if (modalEngine) {
+                modalEngine.innerText = `${text} (${this.mode})`;
+            }
+        }
+
+        subscribe(gameCode, onUpdate) {
+            this.activeCode = gameCode.toUpperCase();
+            this.callback = onUpdate;
+
+            if (this.eventSource) { this.eventSource.close(); this.eventSource = null; }
+            if (this.firestoreUnsub) { this.firestoreUnsub(); this.firestoreUnsub = null; }
+
+            if (this.mode === 'server') {
+                this.eventSource = new EventSource(`/api/stream/${this.activeCode}`);
+                this.eventSource.onmessage = (e) => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        if (data && this.callback) this.callback(data);
+                    } catch(err) {}
+                };
+                this.eventSource.onerror = () => {
+                    // Fallback to polling if SSE drops
+                    this.pollServer(this.activeCode);
+                };
+            } else if (this.mode === 'firestore' && this.firebaseDb) {
+                const docRef = doc(this.firebaseDb, 'games', this.activeCode);
+                this.firestoreUnsub = onSnapshot(docRef, (snap) => {
+                    if (snap.exists() && this.callback) {
+                        this.callback(snap.data());
+                    }
+                });
+            } else {
+                // Local bus read
+                const raw = localStorage.getItem(`lords_table_game_${this.activeCode}`);
+                if (raw && this.callback) {
+                    try { this.callback(JSON.parse(raw)); } catch(e) {}
+                }
+            }
+        }
+
+        async pollServer(code) {
+            try {
+                const res = await fetch(`/api/game/${code}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (this.callback) this.callback(data);
+                }
+            } catch(e) {}
+        }
+
+        async publish(gameCode, data) {
+            const code = gameCode.toUpperCase();
+            const payload = { ...data, code, updatedAt: Date.now() };
+
+            if (this.mode === 'server') {
+                try {
+                    await fetch(`/api/game/${code}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch(e) {
+                    console.error("Server push error:", e);
+                }
+            } else if (this.mode === 'firestore' && this.firebaseDb) {
+                const docRef = doc(this.firebaseDb, 'games', code);
+                await setDoc(docRef, payload, { merge: true });
+            } else {
+                // Local bus push
+                localStorage.setItem(`lords_table_game_${code}`, JSON.stringify(payload));
+                if (this.bus) this.bus.postMessage(payload);
+                if (this.callback) this.callback(payload);
+            }
+        }
+
+        async get(gameCode) {
+            const code = gameCode.toUpperCase();
+            if (this.mode === 'server') {
+                const res = await fetch(`/api/game/${code}`);
+                if (!res.ok) return null;
+                return await res.json();
+            } else if (this.mode === 'firestore' && this.firebaseDb) {
+                const docRef = doc(this.firebaseDb, 'games', code);
+                const snap = await getDoc(docRef);
+                return snap.exists() ? snap.data() : null;
+            } else {
+                const raw = localStorage.getItem(`lords_table_game_${code}`);
+                return raw ? JSON.parse(raw) : null;
+            }
+        }
+    }
+
+    const net = new NetworkManager();
+
+    // --- Application State ---
+    window.appState = {
+        role: null, // 'host' | 'player'
+        adminPin: localStorage.getItem('lords_table_admin_pin') || "1234",
+        playerId: localStorage.getItem('lords_table_player_id') || `p_${Math.random().toString(36).substring(2, 9)}`,
+        playerName: "",
+        gameCode: "",
+        currentGameData: null,
+        timerLocalInterval: null,
+        sortableInstance: null,
+        selectedQuestionIds: null, // null means use all
+        questionBank: loadSavedQuestions()
+    };
+    localStorage.setItem('lords_table_player_id', window.appState.playerId);
+
+    // --- Main Application Controller ---
+    window.app = {
+        // Audio Toggle
+        toggleSound: function() {
+            sound.muted = !sound.muted;
+            localStorage.setItem('lords_table_muted', sound.muted ? 'true' : 'false');
+            const btn = document.getElementById('btn-sound-toggle');
+            if (btn) {
+                btn.innerHTML = sound.muted ? '<i class="fa-solid fa-volume-xmark text-terracotta"></i>' : '<i class="fa-solid fa-volume-high"></i>';
+            }
+            this.showToast(sound.muted ? "Sound Muted" : "Sound Enabled", sound.muted ? "fa-volume-xmark" : "fa-volume-high");
+            if (!sound.muted) sound.playJoin();
+        },
+
+        // Toast Messages
+        showToast: function(msg, icon = 'fa-circle-info', duration = 3200) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            const toastIcon = document.getElementById('toast-icon');
+            if (!toast || !toastMsg) return;
+            
+            toastMsg.innerText = msg;
+            toastIcon.className = `fa-solid ${icon} text-goldAccent text-base`;
+            
+            toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            if (window._toastTimer) clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, duration);
+        },
+
+        // Navigation
+        goHome: function() {
+            if (window.appState.timerLocalInterval) {
+                clearInterval(window.appState.timerLocalInterval);
+                window.appState.timerLocalInterval = null;
+            }
+            window.appState.role = null;
+            window.appState.gameCode = "";
+            sessionStorage.removeItem('lords_table_session');
+            document.getElementById('nav-badge').classList.add('hidden');
+            this.renderLandingPage();
+        },
+
+        checkExistingSession: function() {
+            const saved = sessionStorage.getItem('lords_table_session');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.gameCode && parsed.role) {
+                        window.appState.role = parsed.role;
+                        window.appState.gameCode = parsed.gameCode;
+                        window.appState.playerName = parsed.playerName || '';
+                        this.connectToGameSession(parsed.gameCode);
+                        return true;
+                    }
+                } catch(e) {}
+            }
+            return false;
+        },
+
+        saveSession: function() {
+            sessionStorage.setItem('lords_table_session', JSON.stringify({
+                role: window.appState.role,
+                gameCode: window.appState.gameCode,
+                playerName: window.appState.playerName
+            }));
+        },
+
+        connectToGameSession: function(code) {
+            window.appState.gameCode = code;
+            document.getElementById('nav-badge').classList.remove('hidden');
+            document.getElementById('role-tag').innerText = window.appState.role === 'host' ? '👑 Host' : '🎮 Player';
+            document.getElementById('game-code-tag').innerText = `#${code}`;
+
+            net.subscribe(code, (data) => {
+                if (!data) return;
+                window.appState.currentGameData = data;
+                this.syncLocalTimer(data);
+
+                if (window.appState.role === 'host') {
+                    this.renderHostDashboard(data);
+                } else {
+                    this.renderPlayerScreen(data);
+                }
+            });
+        },
+
+        // Timer Synchronization
+        syncLocalTimer: function(data) {
+            if (window.appState.timerLocalInterval) {
+                clearInterval(window.appState.timerLocalInterval);
+                window.appState.timerLocalInterval = null;
+            }
+
+            if (data.timerRunning && data.timerEndsAt) {
+                const tick = () => {
+                    const now = Date.now();
+                    const secondsLeft = Math.max(0, Math.ceil((data.timerEndsAt - now) / 1000));
+                    
+                    const timerDisplays = [
+                        document.getElementById('timer-display'),
+                        document.getElementById('player-timer-display')
+                    ];
+
+                    timerDisplays.forEach(el => {
+                        if (el) {
+                            el.innerText = `00:${secondsLeft < 10 ? '0' : ''}${secondsLeft}`;
+                            if (secondsLeft <= 5 && secondsLeft > 0) {
+                                el.classList.add('timer-pulse');
+                                sound.playUrgentTick();
+                            } else {
+                                el.classList.remove('timer-pulse');
+                                if (secondsLeft > 5) sound.playTick();
+                            }
+                        }
+                    });
+
+                    if (secondsLeft <= 0) {
+                        clearInterval(window.appState.timerLocalInterval);
+                        window.appState.timerLocalInterval = null;
+                        sound.playTimeUp();
+
+                        // Host marks round expired
+                        if (window.appState.role === 'host' && data.status !== 'TIME_UP' && data.status !== 'REVEALED') {
+                            net.publish(data.code, {
+                                ...data,
+                                timerRunning: false,
+                                timerRemaining: 0,
+                                timerEndsAt: null,
+                                status: 'TIME_UP'
+                            });
+                        }
+                    }
+                };
+
+                tick();
+                window.appState.timerLocalInterval = setInterval(tick, 1000);
+            }
+        },
+
+        // =====================================================================
+        // VIEW: LANDING PAGE
+        // =====================================================================
+        renderLandingPage: function() {
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="text-center py-4 px-2 space-y-7 animate-fade-in">
+                    <!-- Dinner Motif / Chalice Badge -->
+                    <div class="relative inline-block mt-2">
+                        <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto rounded-3xl bg-gradient-to-tr from-purpleAccent via-purpleHover to-espresso flex items-center justify-center text-goldAccent shadow-xl border-2 border-goldAccent/40 rotate-1 transform hover:rotate-0 transition">
+                            <i class="fa-solid fa-utensils text-3xl sm:text-4xl"></i>
+                        </div>
+                        <span class="absolute -bottom-2 -right-2 bg-goldAccent text-espresso text-[10px] font-extrabold px-3 py-1 rounded-full shadow-md border-2 border-cream uppercase tracking-wider">
+                            LIVE EVENT
+                        </span>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <h2 class="font-serif-title font-extrabold text-3xl sm:text-5xl text-espresso tracking-tight leading-none">
+                            THE LORD’S TABLE
+                        </h2>
+                        <p class="font-serif-title italic text-xl sm:text-2xl text-purpleAccent font-bold tracking-wide">
+                            BIBLE GAMES
+                        </p>
+                        <p class="text-base sm:text-lg text-espresso/80 font-semibold pt-1">
+                            “Think you know your Bible? 👀”
+                        </p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-3.5 pt-2 max-w-sm mx-auto w-full">
+                        <!-- JOIN GAME (Dominant Option) -->
+                        <button onclick="app.showJoinForm()" 
+                            class="w-full py-4 px-6 bg-gradient-to-r from-purpleAccent to-purpleHover hover:from-purpleHover hover:to-purpleAccent text-cream font-extrabold text-lg sm:text-xl rounded-2xl shadow-xl hover:shadow-2xl transform active:scale-95 transition flex items-center justify-center gap-3 border-2 border-goldAccent/60">
+                            <i class="fa-solid fa-gamepad text-2xl text-goldAccent"></i>
+                            <span>🎮 JOIN GAME</span>
+                        </button>
+
+                        <!-- HOST GAME -->
+                        <button onclick="app.showAdminPinModal()" 
+                            class="w-full py-3.5 px-6 bg-cardBg hover:bg-cream border-2 border-borderMuted text-espresso font-bold text-base rounded-2xl shadow-sm hover:border-goldAccent/80 transition flex items-center justify-center gap-2.5">
+                            <i class="fa-solid fa-crown text-goldAccent text-lg"></i>
+                            <span>👑 HOST GAME</span>
+                        </button>
+                    </div>
+
+                    <div class="pt-4 flex items-center justify-center gap-2 text-xs text-mutedBronze">
+                        <i class="fa-solid fa-heart text-terracotta/70"></i>
+                        <span>Designed for fellowship, laughter & Scripture</span>
+                    </div>
+                </div>
+            `;
+        },
+
+        // =====================================================================
+        // VIEW: PLAYER JOIN FORM
+        // =====================================================================
+        showJoinForm: function() {
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="max-w-sm mx-auto w-full bg-cardBg p-6 sm:p-8 rounded-3xl border border-borderMuted card-shadow space-y-6 animate-fade-in">
+                    <div class="text-center space-y-1">
+                        <div class="w-12 h-12 mx-auto rounded-2xl bg-purpleSoft text-purpleAccent flex items-center justify-center text-xl mb-2">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                        <h3 class="font-serif-title text-2xl font-bold text-espresso">Join Game</h3>
+                        <p class="text-xs text-mutedBronze">Enter the 4-digit code shown on the host screen</p>
+                    </div>
+
+                    <form onsubmit="app.handlePlayerJoin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-espresso/80 mb-1.5">
+                                GAME CODE
+                            </label>
+                            <input type="text" id="input-game-code" maxlength="4" placeholder="e.g. 2741" required autofocus
+                                class="w-full px-4 py-3 text-center text-3xl font-mono font-extrabold uppercase tracking-widest bg-cream border-2 border-borderMuted rounded-2xl focus:border-purpleAccent focus:outline-none transition">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-espresso/80 mb-1.5">
+                                NAME / NICKNAME / TABLE
+                            </label>
+                            <input type="text" id="input-player-name" maxlength="22" placeholder="e.g. Table Grace or Sarah" required
+                                class="w-full px-4 py-3.5 font-bold text-espresso text-base bg-cream border-2 border-borderMuted rounded-2xl focus:border-purpleAccent focus:outline-none transition">
+                        </div>
+
+                        <button type="submit" id="btn-player-join"
+                            class="w-full py-4 bg-purpleAccent hover:bg-purpleHover text-cream font-extrabold text-lg rounded-2xl shadow-lg transition flex items-center justify-center gap-2 border-2 border-goldAccent/40">
+                            <span>JOIN GAME</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </form>
+
+                    <button onclick="app.renderLandingPage()" class="w-full text-center text-xs font-semibold text-mutedBronze hover:text-espresso underline">
+                        ← Back to Landing Page
+                    </button>
+                </div>
+            `;
+        },
+
+        handlePlayerJoin: async function(e) {
+            e.preventDefault();
+            const code = document.getElementById('input-game-code').value.trim().toUpperCase();
+            const name = document.getElementById('input-player-name').value.trim();
+            const btn = document.getElementById('btn-player-join');
+
+            if (!code || !name) {
+                this.showToast("Please enter both Game Code and Name", "fa-triangle-exclamation");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Entering Room...';
+
+            try {
+                const gameData = await net.get(code);
+                if (!gameData) {
+                    this.showToast("Game code not found. Check with host!", "fa-circle-xmark");
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>JOIN GAME</span><i class="fa-solid fa-arrow-right"></i>';
+                    return;
+                }
+
+                const pId = window.appState.playerId;
+                const players = gameData.players || {};
+
+                // Preserve existing score on reconnect
+                const currentScore = players[pId] ? players[pId].score : 0;
+                players[pId] = {
+                    id: pId,
+                    name: name,
+                    score: currentScore,
+                    joinedAt: Date.now()
+                };
+
+                await net.publish(code, { ...gameData, players });
+
+                window.appState.role = 'player';
+                window.appState.playerName = name;
+                window.appState.gameCode = code;
+                this.saveSession();
+
+                sound.playJoin();
+                this.connectToGameSession(code);
+                this.showToast(`Welcome, ${name}! You're in! 👀`, "fa-circle-check");
+            } catch(err) {
+                this.showToast("Failed to join: " + err.message, "fa-triangle-exclamation");
+                btn.disabled = false;
+                btn.innerHTML = '<span>JOIN GAME</span><i class="fa-solid fa-arrow-right"></i>';
+            }
+        },
+
+        // =====================================================================
+        // VIEW: ADMIN PIN LOGIN
+        // =====================================================================
+        showAdminPinModal: function() {
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="max-w-sm mx-auto w-full bg-cardBg p-6 sm:p-8 rounded-3xl border border-borderMuted card-shadow space-y-6 animate-fade-in">
+                    <div class="text-center space-y-1">
+                        <div class="w-12 h-12 mx-auto rounded-2xl bg-goldLight text-goldAccent flex items-center justify-center text-xl mb-2 border border-goldAccent/30">
+                            <i class="fa-solid fa-lock"></i>
+                        </div>
+                        <h3 class="font-serif-title text-2xl font-bold text-espresso">Host Login</h3>
+                        <p class="text-xs text-mutedBronze">Enter Admin PIN to open the Host Dashboard</p>
+                    </div>
+
+                    <form onsubmit="app.handleAdminLogin(event)" class="space-y-4">
+                        <div>
+                            <input type="password" id="input-admin-pin" placeholder="Enter PIN" required autofocus
+                                class="w-full px-4 py-3.5 text-center text-3xl font-mono tracking-widest bg-cream border-2 border-borderMuted rounded-2xl focus:border-purpleAccent focus:outline-none transition">
+                            <p class="text-[11px] text-center text-mutedBronze mt-1.5 font-medium">Default PIN: <strong class="text-espresso font-mono">1234</strong></p>
+                        </div>
+
+                        <button type="submit" 
+                            class="w-full py-4 bg-espresso hover:bg-black text-cream font-bold text-base rounded-2xl shadow-md transition flex items-center justify-center gap-2">
+                            <span>UNLOCK DASHBOARD</span>
+                            <i class="fa-solid fa-key text-goldAccent"></i>
+                        </button>
+                    </form>
+
+                    <button onclick="app.renderLandingPage()" class="w-full text-center text-xs font-semibold text-mutedBronze hover:text-espresso underline">
+                        ← Back to Landing Page
+                    </button>
+                </div>
+            `;
+        },
+
+        handleAdminLogin: function(e) {
+            e.preventDefault();
+            const pin = document.getElementById('input-admin-pin').value;
+            if (pin === window.appState.adminPin) {
+                window.appState.role = 'host';
+                sound.playJoin();
+                this.renderHostSetup();
+            } else {
+                sound.playWrong();
+                this.showToast("Incorrect Admin PIN", "fa-circle-xmark");
+            }
+        },
+
+        // =====================================================================
+        // VIEW: HOST GAME SETUP
+        // =====================================================================
+        renderHostSetup: function() {
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="max-w-xl mx-auto w-full bg-cardBg p-6 sm:p-8 rounded-3xl border border-borderMuted card-shadow space-y-6 animate-fade-in">
+                    <div class="flex justify-between items-center border-b border-borderMuted pb-4">
+                        <div>
+                            <h3 class="font-serif-title text-2xl font-bold text-espresso">Host Game Setup</h3>
+                            <p class="text-xs text-mutedBronze">Configure tonight's Bible Game session</p>
+                        </div>
+                        <button onclick="app.renderQuestionBankManager()" class="text-xs px-3.5 py-2 bg-cream border border-borderMuted rounded-xl hover:border-purpleAccent flex items-center gap-1.5 font-bold text-purpleAccent transition">
+                            <i class="fa-solid fa-book-bible"></i>
+                            <span>Question Bank</span>
+                        </button>
+                    </div>
+
+                    <form onsubmit="app.createNewGameSession(event)" class="space-y-5 text-xs">
+                        <!-- Game Type Selection -->
+                        <div>
+                            <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
+                                SELECT BIBLE GAME
+                            </label>
+                            <select id="select-game-type" class="w-full px-4 py-3 bg-cream border-2 border-borderMuted rounded-xl font-bold text-espresso text-sm focus:border-purpleAccent focus:outline-none">
+                                <option value="AGREE_DISAGREE">👍 👎 GAME 1: AGREE OR DISAGREE</option>
+                                <option value="CATEGORIES">📚 GAME 2: BIBLE CATEGORIES</option>
+                                <option value="ORDER">⏳ GAME 3: PUT IT IN ORDER</option>
+                                <option value="MIX">🌟 ALL-STAR MIX (ROUNDS OF ALL 3!)</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Number of Rounds -->
+                            <div>
+                                <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
+                                    NUMBER OF QUESTIONS / ROUNDS
+                                </label>
+                                <select id="select-round-count" class="w-full px-3 py-3 bg-cream border-2 border-borderMuted rounded-xl font-semibold text-espresso text-sm focus:border-purpleAccent focus:outline-none">
+                                    <option value="3">3 Rounds</option>
+                                    <option value="5" selected>5 Rounds (Recommended)</option>
+                                    <option value="7">7 Rounds</option>
+                                    <option value="10">10 Rounds</option>
+                                    <option value="ALL">All Available</option>
+                                </select>
+                            </div>
+
+                            <!-- Difficulty -->
+                            <div>
+                                <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
+                                    DIFFICULTY LEVEL
+                                </label>
+                                <select id="select-difficulty" class="w-full px-3 py-3 bg-cream border-2 border-borderMuted rounded-xl font-semibold text-espresso text-sm focus:border-purpleAccent focus:outline-none">
+                                    <option value="ALL">All Difficulties (Mixed)</option>
+                                    <option value="EASY">Easy Only</option>
+                                    <option value="MEDIUM">Medium Only</option>
+                                    <option value="HARD">Hard Only</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Timer Configuration -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
+                                    TIMER DURATION
+                                </label>
+                                <select id="select-timer-len" onchange="app.handleTimerOptionChange()" class="w-full px-3 py-3 bg-cream border-2 border-borderMuted rounded-xl font-semibold text-espresso text-sm focus:border-purpleAccent focus:outline-none">
+                                    <option value="10">10 Seconds</option>
+                                    <option value="15">15 Seconds</option>
+                                    <option value="20" selected>20 Seconds</option>
+                                    <option value="30">30 Seconds</option>
+                                    <option value="45">45 Seconds</option>
+                                    <option value="60">60 Seconds</option>
+                                    <option value="CUSTOM">Custom Duration...</option>
+                                </select>
+                            </div>
+
+                            <!-- Custom Seconds (Shown if CUSTOM selected) -->
+                            <div id="custom-timer-box" class="hidden">
+                                <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
+                                    CUSTOM SECONDS
+                                </label>
+                                <input type="number" id="input-custom-seconds" min="5" max="300" value="25"
+                                    class="w-full px-3 py-2.5 bg-cream border-2 border-borderMuted rounded-xl font-bold text-espresso text-sm focus:border-purpleAccent focus:outline-none">
+                            </div>
+
+                            <!-- Game Mode: Individual vs Tables -->
+                            <div id="mode-box">
+                                <label class="block font-bold uppercase tracking-wider text-espresso mb-1.5">
+                                    PARTICIPANTS
+                                </label>
+                                <select id="select-participant-mode" class="w-full px-3 py-3 bg-cream border-2 border-borderMuted rounded-xl font-semibold text-espresso text-sm focus:border-purpleAccent focus:outline-none">
+                                    <option value="PLAYERS" selected>Individual Players</option>
+                                    <option value="TEAMS">Table Teams</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="btn-create-session"
+                            class="w-full py-4 bg-purpleAccent hover:bg-purpleHover text-cream font-extrabold text-lg rounded-2xl shadow-xl transition flex items-center justify-center gap-2.5 border-2 border-goldAccent">
+                            <i class="fa-solid fa-circle-plus text-goldAccent"></i>
+                            <span>CREATE GAME SESSION</span>
+                        </button>
+                    </form>
+                </div>
+            `;
+        },
+
+        handleTimerOptionChange: function() {
+            const val = document.getElementById('select-timer-len').value;
+            const customBox = document.getElementById('custom-timer-box');
+            if (val === 'CUSTOM') {
+                customBox.classList.remove('hidden');
+            } else {
+                customBox.classList.add('hidden');
+            }
+        },
+
+        createNewGameSession: async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-create-session');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating Session...';
+
+            try {
+                const gameType = document.getElementById('select-game-type').value;
+                const roundCountSetting = document.getElementById('select-round-count').value;
+                const difficulty = document.getElementById('select-difficulty').value;
+                const timerSetting = document.getElementById('select-timer-len').value;
+                const participantMode = document.getElementById('select-participant-mode').value;
+
+                let timerSeconds = 20;
+                if (timerSetting === 'CUSTOM') {
+                    timerSeconds = parseInt(document.getElementById('input-custom-seconds').value, 10) || 20;
+                } else {
+                    timerSeconds = parseInt(timerSetting, 10);
+                }
+
+                // Filter & shuffle selected questions
+                let pool = [...window.appState.questionBank];
+                if (gameType !== 'MIX') {
+                    pool = pool.filter(q => q.type === gameType);
+                }
+                if (difficulty !== 'ALL') {
+                    const filtered = pool.filter(q => q.difficulty === difficulty);
+                    if (filtered.length > 0) pool = filtered;
+                }
+
+                // Shuffle array
+                pool.sort(() => Math.random() - 0.5);
+
+                // Limit by round count
+                if (roundCountSetting !== 'ALL') {
+                    const maxCount = parseInt(roundCountSetting, 10);
+                    pool = pool.slice(0, maxCount);
+                }
+
+                if (pool.length === 0) {
+                    pool = [...window.appState.questionBank].slice(0, 5);
+                }
+
+                // Generate 4-digit code
+                const shortCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+                const newGame = {
+                    code: shortCode,
+                    gameType: gameType,
+                    participantMode: participantMode,
+                    status: 'LOBBY', // 'LOBBY' | 'QUESTION' | 'TIME_UP' | 'REVEALED' | 'ENDED'
+                    timerLength: timerSeconds,
+                    timerRemaining: timerSeconds,
+                    timerEndsAt: null,
+                    timerRunning: false,
+                    currentQuestionIndex: 0,
+                    questions: pool,
+                    players: {},
+                    responses: {}, // { [playerId]: response }
+                    showLeaderboard: false,
+                    createdAt: Date.now()
+                };
+
+                await net.publish(shortCode, newGame);
+
+                window.appState.role = 'host';
+                window.appState.gameCode = shortCode;
+                this.saveSession();
+
+                sound.playJoin();
+                this.connectToGameSession(shortCode);
+                this.showToast(`Game Created! Code: ${shortCode}`, "fa-circle-check");
+            } catch(err) {
+                this.showToast("Failed to create game: " + err.message, "fa-triangle-exclamation");
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-circle-plus text-goldAccent"></i><span>CREATE GAME SESSION</span>';
+            }
+        },
+
+        // =====================================================================
+        // VIEW: HOST DASHBOARD (Lobby & In-Game)
+        // =====================================================================
+        renderHostDashboard: function(data) {
+            const container = document.getElementById('main-content');
+            const playersList = Object.values(data.players || {});
+            const currentQ = data.questions[data.currentQuestionIndex];
+
+            // 1. HOST LOBBY
+            if (data.status === 'LOBBY') {
+                container.innerHTML = `
+                    <div class="max-w-xl mx-auto w-full bg-cardBg p-6 sm:p-8 rounded-3xl border border-borderMuted card-shadow space-y-6 animate-fade-in">
+                        <!-- Large Code Header -->
+                        <div class="text-center bg-cream p-6 rounded-2xl border-2 border-goldAccent/40 space-y-2">
+                            <span class="text-xs font-bold text-mutedBronze tracking-widest uppercase">GAME CODE FOR GUESTS</span>
+                            <h2 class="font-mono text-5xl sm:text-6xl font-extrabold text-purpleAccent tracking-widest">${data.code}</h2>
+                            <p class="text-xs text-espresso/70 font-semibold">Guests select <strong>JOIN GAME</strong> on their phones and enter this code</p>
+                        </div>
+
+                        <!-- Players Joined Roster -->
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <h4 class="font-serif-title font-bold text-lg text-espresso flex items-center gap-2">
+                                    <i class="fa-solid fa-users text-purpleAccent"></i>
+                                    <span>Players Joined (${playersList.length})</span>
+                                </h4>
+                                <span class="text-xs text-emeraldAccent font-semibold flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span>Live sync</span>
+                                </span>
+                            </div>
+
+                            <div class="bg-cream/60 p-4 rounded-2xl border border-borderMuted min-h-[120px] max-h-[220px] overflow-y-auto flex flex-wrap gap-2">
+                                ${playersList.length === 0 ? `
+                                    <div class="w-full text-center text-xs text-mutedBronze py-8">Waiting for guests to enter code on their phones...</div>
+                                ` : playersList.map(p => `
+                                    <span class="px-3.5 py-2 bg-cardBg border border-borderMuted rounded-xl font-semibold text-sm text-espresso flex items-center gap-2 shadow-sm">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                        <span>${p.name}</span>
+                                        <button onclick="app.hostRemovePlayer('${p.id}')" title="Remove Player" class="text-espresso/30 hover:text-terracotta ml-1 text-xs">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Lobby Action Buttons -->
+                        <div class="pt-2 flex flex-col sm:flex-row gap-3">
+                            <button onclick="app.hostStartGame()"
+                                class="flex-1 py-4 bg-purpleAccent hover:bg-purpleHover text-cream font-extrabold text-lg rounded-2xl shadow-xl transition flex items-center justify-center gap-2.5 border-2 border-goldAccent">
+                                <i class="fa-solid fa-play"></i>
+                                <span>START GAME</span>
+                            </button>
+                            <button onclick="app.hostResetOrEndGame()" class="px-4 py-3 bg-cream border border-borderMuted text-espresso text-xs font-bold rounded-2xl hover:bg-borderMuted">
+                                End Session
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 2. IN-GAME ACTIVE HOST DASHBOARD
+            const responses = data.responses || {};
+            const responseCount = Object.keys(responses).length;
+
+            container.innerHTML = `
+                <div class="max-w-2xl mx-auto w-full space-y-5 animate-fade-in">
+                    <!-- Top Control Bar: Round & Timer -->
+                    <div class="bg-cardBg p-4 sm:p-5 rounded-2xl border border-borderMuted card-shadow flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div class="flex items-center gap-3">
+                            <span class="px-3 py-1 bg-purpleSoft text-purpleAccent font-extrabold text-xs rounded-full border border-purpleAccent/20">
+                                Round ${data.currentQuestionIndex + 1} / ${data.questions.length}
+                            </span>
+                            <span class="text-xs font-bold text-mutedBronze uppercase tracking-wider">
+                                ${currentQ.type.replace('_', ' ')}
+                            </span>
+                        </div>
+
+                        <!-- Synchronized Timer & Timer Control Buttons -->
+                        <div class="flex items-center gap-3">
+                            <div id="timer-display" class="font-mono text-3xl font-extrabold text-espresso ${data.timerRemaining <= 5 && data.timerRunning ? 'timer-pulse' : ''}">
+                                00:${data.timerRemaining < 10 ? '0' : ''}${data.timerRemaining}
+                            </div>
+                            
+                            <!-- Timer Actions -->
+                            <div class="flex items-center gap-1.5">
+                                ${!data.timerRunning ? `
+                                    <button onclick="app.hostStartTimer()" class="px-3 py-2 bg-emeraldAccent hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1">
+                                        <i class="fa-solid fa-play"></i>
+                                        <span>Start</span>
+                                    </button>
+                                ` : `
+                                    <button onclick="app.hostPauseTimer()" class="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1">
+                                        <i class="fa-solid fa-pause"></i>
+                                        <span>Pause</span>
+                                    </button>
+                                `}
+                                <button onclick="app.hostResetTimer()" class="p-2 bg-cream border border-borderMuted hover:bg-borderMuted text-espresso rounded-xl text-xs font-bold" title="Reset Timer">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                </button>
+                                <button onclick="app.hostEndRoundEarly()" class="p-2 bg-terracotta hover:bg-red-700 text-white rounded-xl text-xs font-bold" title="End Round Early">
+                                    <i class="fa-solid fa-stop"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Question Detail Card -->
+                    <div class="bg-cardBg p-6 sm:p-7 rounded-3xl border border-borderMuted card-shadow space-y-5">
+                        <div class="space-y-1.5">
+                            <span class="text-[11px] font-bold text-goldAccent tracking-widest uppercase">QUESTION PROMPT</span>
+                            <h3 class="font-serif-title text-xl sm:text-2xl font-bold text-espresso leading-snug">
+                                ${currentQ.statement || currentQ.prompt}
+                            </h3>
+                        </div>
+
+                        <!-- Put In Order Target Preview (Shown to Host) -->
+                        ${currentQ.type === 'ORDER' ? `
+                            <div class="bg-cream p-4 rounded-2xl border border-borderMuted space-y-2 text-xs">
+                                <span class="font-bold text-mutedBronze uppercase tracking-wider">Correct Chronological Sequence:</span>
+                                <ol class="list-decimal list-inside space-y-1 font-semibold text-espresso">
+                                    ${currentQ.events.map(ev => `<li>${ev}</li>`).join('')}
+                                </ol>
+                            </div>
+                        ` : ''}
+
+                        <!-- Response Submission Progress -->
+                        <div class="flex justify-between items-center text-xs font-bold text-mutedBronze border-t border-borderMuted pt-3.5">
+                            <span>Submissions: <strong class="text-espresso font-mono">${responseCount} / ${playersList.length}</strong></span>
+                            <span>Status: <strong class="text-purpleAccent uppercase">${data.status}</strong></span>
+                        </div>
+
+                        <!-- Host Response Breakdown (Who answered what) -->
+                        ${responseCount > 0 && currentQ.type === 'AGREE_DISAGREE' ? `
+                            <div class="p-3.5 bg-cream/70 rounded-2xl border border-borderMuted space-y-2 text-xs">
+                                <div class="flex justify-between items-center font-bold">
+                                    <span class="text-mutedBronze uppercase">Live Tally:</span>
+                                    <span class="space-x-3">
+                                        <span class="text-emeraldAccent">👍 Agree: ${Object.values(responses).filter(r => r === 'AGREE').length}</span>
+                                        <span class="text-terracotta">👎 Disagree: ${Object.values(responses).filter(r => r === 'DISAGREE').length}</span>
+                                    </span>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Answer Reveal Section -->
+                        ${data.status === 'REVEALED' ? `
+                            <div class="bg-emerald-50 border-2 border-emerald-300 p-5 rounded-2xl space-y-2.5 animate-fade-in text-xs">
+                                <span class="font-bold text-emerald-800 uppercase tracking-wider text-[11px]">CORRECT ANSWER & SCRIPTURE</span>
+                                ${currentQ.type === 'AGREE_DISAGREE' ? `
+                                    <div class="text-xl font-extrabold ${currentQ.correctAnswer === 'AGREE' ? 'text-emerald-700' : 'text-terracotta'}">
+                                        ${currentQ.correctAnswer === 'AGREE' ? '👍 AGREE' : '❌ DISAGREE'}
+                                    </div>
+                                    <p class="text-sm font-medium text-espresso">${currentQ.explanation}</p>
+                                    <p class="font-bold text-purpleAccent">${currentQ.scripture}</p>
+                                ` : currentQ.type === 'CATEGORIES' ? `
+                                    <div class="font-semibold text-espresso">Approved Examples:</div>
+                                    <div class="flex flex-wrap gap-1.5 pt-1">
+                                        ${currentQ.possibleAnswers.map(ans => `<span class="px-2.5 py-1 bg-white border border-emerald-300 rounded-lg font-bold text-emerald-900">${ans}</span>`).join('')}
+                                    </div>
+                                ` : `
+                                    <ol class="list-decimal list-inside text-sm font-bold text-emerald-900 space-y-1">
+                                        ${currentQ.events.map(ev => `<li>${ev}</li>`).join('')}
+                                    </ol>
+                                    <p class="font-bold text-purpleAccent pt-1">${currentQ.scripture || ''}</p>
+                                `}
+                            </div>
+                        ` : ''}
+
+                        <!-- Host Controls: Reveal / Next / Leaderboard -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            ${data.status !== 'REVEALED' ? `
+                                <button onclick="app.hostRevealAnswer()" class="py-3.5 px-4 bg-goldAccent hover:bg-goldHover text-espresso font-extrabold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-eye"></i>
+                                    <span>REVEAL ANSWER</span>
+                                </button>
+                            ` : `
+                                <button onclick="app.hostNextQuestion()" class="py-3.5 px-4 bg-purpleAccent hover:bg-purpleHover text-cream font-extrabold text-sm rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                                    <span>NEXT QUESTION</span>
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                </button>
+                            `}
+
+                            <button onclick="app.hostToggleLeaderboard()" class="py-3.5 px-4 bg-cream border-2 border-borderMuted hover:border-goldAccent text-espresso font-extrabold text-sm rounded-xl transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-trophy text-goldAccent"></i>
+                                <span>${data.showLeaderboard ? 'HIDE LEADERBOARD' : 'BROADCAST LEADERBOARD'}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scores & Manual Points Allocation Card -->
+                    <div class="bg-cardBg p-6 rounded-3xl border border-borderMuted card-shadow space-y-3.5 text-xs">
+                        <div class="flex justify-between items-center border-b border-borderMuted pb-2.5">
+                            <h4 class="font-serif-title font-bold text-base text-espresso flex items-center gap-2">
+                                <i class="fa-solid fa-medal text-goldAccent"></i>
+                                <span>Scoreboard & Manual Adjustments</span>
+                            </h4>
+                            <span class="text-mutedBronze font-medium">Click +1 to award table points</span>
+                        </div>
+
+                        <div class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                            ${playersList.length === 0 ? `
+                                <p class="text-mutedBronze text-center py-4">No players connected</p>
+                            ` : playersList.map(p => {
+                                const resp = responses[p.id];
+                                let respBadge = '';
+                                if (resp) {
+                                    if (typeof resp === 'string') respBadge = `<span class="px-2 py-0.5 bg-purpleSoft text-purpleAccent font-bold rounded-md font-mono">${resp}</span>`;
+                                    else if (Array.isArray(resp)) respBadge = `<span class="px-2 py-0.5 bg-purpleSoft text-purpleAccent font-bold rounded-md font-mono">Ordered</span>`;
+                                }
+                                return `
+                                    <div class="flex justify-between items-center p-3 bg-cream rounded-xl border border-borderMuted">
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="font-bold text-espresso text-sm">${p.name}</span>
+                                            ${respBadge}
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-mono font-extrabold text-espresso text-base">${p.score || 0} pts</span>
+                                            <div class="flex items-center gap-1">
+                                                <button onclick="app.hostAdjustScore('${p.id}', 1)" class="w-8 h-8 bg-emerald-100 text-emerald-800 font-extrabold rounded-lg hover:bg-emerald-200 text-sm shadow-sm">+</button>
+                                                <button onclick="app.hostAdjustScore('${p.id}', -1)" class="w-8 h-8 bg-red-100 text-red-800 font-extrabold rounded-lg hover:bg-red-200 text-sm shadow-sm">-</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+
+                        <div class="pt-2 flex justify-between items-center text-mutedBronze border-t border-borderMuted">
+                            <button onclick="app.hostResetOrEndGame()" class="text-terracotta hover:underline font-bold">
+                                End / Reset Session
+                            </button>
+                            <span>Session #${data.code}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        },
+
+        // =====================================================================
+        // VIEW: PLAYER SCREEN
+        // =====================================================================
+        renderPlayerScreen: function(data) {
+            const container = document.getElementById('main-content');
+            const pId = window.appState.playerId;
+            const myPlayer = (data.players && data.players[pId]) ? data.players[pId] : { name: window.appState.playerName, score: 0 };
+            const myResponse = data.responses ? data.responses[pId] : null;
+            const currentQ = data.questions[data.currentQuestionIndex];
+            const playersList = Object.values(data.players || {});
+
+            // 1. BROADCASTED LEADERBOARD
+            if (data.showLeaderboard) {
+                this.renderLeaderboardView(data);
+                return;
+            }
+
+            // 2. LOBBY SCREEN
+            if (data.status === 'LOBBY') {
+                container.innerHTML = `
+                    <div class="max-w-sm mx-auto w-full bg-cardBg p-8 rounded-3xl border border-borderMuted card-shadow text-center space-y-6 animate-fade-in">
+                        <div class="w-20 h-20 mx-auto rounded-3xl bg-purpleSoft text-purpleAccent flex items-center justify-center text-4xl shadow-md border border-purpleAccent/20">
+                            👀
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <h2 class="font-serif-title text-3xl font-extrabold text-espresso">YOU’RE IN!</h2>
+                            <p class="text-sm font-semibold text-mutedBronze">Waiting for the host to start…</p>
+                        </div>
+
+                        <div class="bg-cream p-5 rounded-2xl border border-borderMuted space-y-2">
+                            <div class="text-[10px] font-extrabold text-mutedBronze uppercase tracking-wider">YOUR NAME / TABLE</div>
+                            <div class="text-xl font-extrabold text-purpleAccent">${myPlayer.name}</div>
+                            <div class="text-xs font-mono font-bold text-espresso/70 pt-1">Game Code: #${data.code}</div>
+                        </div>
+
+                        <!-- Live Players Count Indicator -->
+                        <div class="p-3.5 bg-cream/70 rounded-2xl border border-borderMuted flex items-center justify-between text-xs font-bold text-espresso">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-users text-purpleAccent"></i>
+                                <span>Players Joined:</span>
+                            </span>
+                            <span class="font-mono text-purpleAccent text-sm">${playersList.length}</span>
+                        </div>
+
+                        <div class="text-xs text-mutedBronze flex items-center justify-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>Connected & ready for round 1</span>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 3. TIME'S UP STATE (If player didn't answer in time)
+            if (data.status === 'TIME_UP' && !myResponse) {
+                container.innerHTML = `
+                    <div class="max-w-md mx-auto w-full bg-cardBg p-8 rounded-3xl border border-borderMuted card-shadow text-center space-y-6 animate-fade-in">
+                        <div class="text-5xl animate-bounce">⏳</div>
+                        <div class="space-y-2">
+                            <h2 class="font-serif-title text-3xl font-extrabold text-terracotta">TIME’S UP! 👀</h2>
+                            <p class="text-sm font-semibold text-mutedBronze">Waiting for the answer reveal…</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 4. REVEALED STATE
+            if (data.status === 'REVEALED') {
+                const isCorrect = this.checkPlayerAnswerCorrect(currentQ, myResponse);
+                if (isCorrect) {
+                    sound.playCorrect();
+                    confetti({ particleCount: 75, spread: 65, origin: { y: 0.6 } });
+                }
+
+                container.innerHTML = `
+                    <div class="max-w-md mx-auto w-full bg-cardBg p-6 sm:p-8 rounded-3xl border border-borderMuted card-shadow space-y-5 animate-fade-in">
+                        <div class="text-center space-y-1.5">
+                            <div class="text-4xl">${isCorrect ? '🎉' : '📖'}</div>
+                            <h3 class="font-serif-title text-2xl font-bold text-espresso">
+                                ${isCorrect ? 'CORRECT! +1 POINT' : 'ROUND REVEAL'}
+                            </h3>
+                        </div>
+
+                        <!-- Answer & Scripture Box -->
+                        <div class="bg-cream p-5 rounded-2xl border border-borderMuted space-y-3">
+                            <div class="text-[10px] font-extrabold text-goldAccent tracking-widest uppercase">CORRECT ANSWER & SCRIPTURE</div>
+                            ${currentQ.type === 'AGREE_DISAGREE' ? `
+                                <p class="font-extrabold text-2xl ${currentQ.correctAnswer === 'AGREE' ? 'text-emeraldAccent' : 'text-terracotta'}">
+                                    ${currentQ.correctAnswer === 'AGREE' ? '👍 AGREE' : '❌ DISAGREE'}
+                                </p>
+                                <p class="text-sm font-medium text-espresso">${currentQ.explanation}</p>
+                                <p class="text-xs font-bold text-purpleAccent">${currentQ.scripture}</p>
+                            ` : currentQ.type === 'CATEGORIES' ? `
+                                <p class="text-xs font-bold text-espresso">Approved Examples:</p>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${currentQ.possibleAnswers.map(ans => `<span class="px-2.5 py-1 bg-cardBg border border-borderMuted rounded-lg text-xs font-bold text-espresso">${ans}</span>`).join('')}
+                                </div>
+                            ` : `
+                                <ol class="list-decimal list-inside text-sm font-bold text-espresso space-y-1.5">
+                                    ${currentQ.events.map(ev => `<li>${ev}</li>`).join('')}
+                                </ol>
+                                <p class="text-xs font-bold text-purpleAccent pt-1">${currentQ.scripture || ''}</p>
+                            `}
+                        </div>
+
+                        <!-- Updated Score Badge -->
+                        <div class="bg-purpleSoft border border-purpleAccent/20 p-5 rounded-2xl text-center space-y-1">
+                            <div class="text-xs font-bold text-purpleAccent uppercase tracking-wider">YOUR SCORE</div>
+                            <div class="text-3xl font-extrabold text-espresso font-mono">${myPlayer.score || 0} POINTS</div>
+                        </div>
+
+                        <p class="text-xs text-mutedBronze text-center">Waiting for host to begin next question…</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // 5. IN-GAME QUESTION ACTIVE STATE
+            container.innerHTML = `
+                <div class="max-w-md mx-auto w-full space-y-5 animate-fade-in">
+                    <!-- Top Bar: Timer -->
+                    <div class="bg-cardBg p-4 rounded-2xl border border-borderMuted card-shadow flex justify-between items-center">
+                        <span class="text-xs font-extrabold text-mutedBronze uppercase tracking-wider">Round ${data.currentQuestionIndex + 1}</span>
+                        <div id="player-timer-display" class="font-mono text-2xl font-extrabold ${data.timerRemaining <= 5 ? 'timer-pulse text-terracotta' : 'text-espresso'}">
+                            ⏱ 00:${data.timerRemaining < 10 ? '0' : ''}${data.timerRemaining}
+                        </div>
+                    </div>
+
+                    <!-- Question Prompt Card -->
+                    <div class="bg-cardBg p-6 sm:p-7 rounded-3xl border border-borderMuted card-shadow space-y-6">
+                        <h3 class="font-serif-title text-xl sm:text-2xl font-bold text-espresso text-center leading-snug">
+                            ${currentQ.statement || currentQ.prompt}
+                        </h3>
+
+                        <!-- INTERACTION MODES -->
+                        ${myResponse ? `
+                            <div class="bg-cream p-6 rounded-2xl border border-borderMuted text-center space-y-2 animate-fade-in">
+                                <div class="text-3xl">🔒</div>
+                                <div class="font-serif-title text-xl font-bold text-espresso">ANSWER LOCKED</div>
+                                <p class="text-xs text-mutedBronze">Waiting for time to expire & host to reveal…</p>
+                            </div>
+                        ` : currentQ.type === 'AGREE_DISAGREE' ? `
+                            <div class="grid grid-cols-2 gap-3.5">
+                                <button onclick="app.submitPlayerAnswer('AGREE')" 
+                                    class="py-6 px-4 bg-emeraldAccent hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-lg rounded-2xl shadow-lg transition flex flex-col items-center gap-2 border-2 border-emerald-400">
+                                    <span class="text-3xl">👍</span>
+                                    <span>AGREE</span>
+                                </button>
+                                <button onclick="app.submitPlayerAnswer('DISAGREE')" 
+                                    class="py-6 px-4 bg-terracotta hover:bg-red-700 active:scale-95 text-white font-extrabold text-lg rounded-2xl shadow-lg transition flex flex-col items-center gap-2 border-2 border-red-400">
+                                    <span class="text-3xl">👎</span>
+                                    <span>DISAGREE</span>
+                                </button>
+                            </div>
+                        ` : currentQ.type === 'CATEGORIES' ? `
+                            <div class="bg-cream p-6 rounded-2xl border border-borderMuted text-center space-y-3">
+                                <div class="text-3xl">🗣️</div>
+                                <p class="text-sm font-bold text-espresso">Discuss with your table team!</p>
+                                <p class="text-xs text-mutedBronze leading-relaxed">
+                                    Call out your answers verbally at your table. The Host will reveal possible answers and award points.
+                                </p>
+                            </div>
+                        ` : `
+                            <!-- PUT IT IN ORDER -->
+                            <div class="space-y-4">
+                                <p class="text-xs text-center font-bold text-goldAccent uppercase tracking-wider">Arrange events in chronological order (1st to 4th)</p>
+                                <div id="sortable-list" class="space-y-2.5">
+                                    ${this.getShuffledOrderItems(currentQ)}
+                                </div>
+                                <button onclick="app.submitOrderAnswer()" 
+                                    class="w-full py-4 bg-purpleAccent hover:bg-purpleHover text-cream font-extrabold text-base rounded-2xl shadow-lg transition border-2 border-goldAccent/40">
+                                    LOCK IN ANSWER 🔒
+                                </button>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+
+            // Initialize touch drag & drop for ORDER
+            if (currentQ.type === 'ORDER' && !myResponse) {
+                setTimeout(() => {
+                    const el = document.getElementById('sortable-list');
+                    if (el) {
+                        window.appState.sortableInstance = new Sortable(el, {
+                            animation: 180,
+                            ghostClass: 'sortable-ghost',
+                            handle: '.drag-handle'
+                        });
+                    }
+                }, 50);
+            }
+        },
+
+        // Helper: Generate randomized card order for Game 3
+        getShuffledOrderItems: function(question) {
+            // Keep deterministic shuffle per question round for the player
+            if (!this._cachedShuffled || this._cachedQId !== question.id) {
+                const indices = [0, 1, 2, 3];
+                // Shuffle until not identical to [0,1,2,3]
+                do {
+                    indices.sort(() => Math.random() - 0.5);
+                } while (JSON.stringify(indices) === '[0,1,2,3]');
+                this._cachedShuffled = indices;
+                this._cachedQId = question.id;
+            }
+
+            return this._cachedShuffled.map(idx => `
+                <div data-id="${idx}" class="p-3.5 bg-cream border-2 border-borderMuted rounded-2xl font-semibold text-xs sm:text-sm text-espresso flex items-center justify-between shadow-sm select-none">
+                    <span class="flex-1 pr-2">${question.events[idx]}</span>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="app.moveOrderItem(this, -1)" class="w-7 h-7 bg-white rounded-lg border border-borderMuted text-espresso flex items-center justify-center hover:bg-borderMuted">
+                            <i class="fa-solid fa-chevron-up text-xs"></i>
+                        </button>
+                        <button onclick="app.moveOrderItem(this, 1)" class="w-7 h-7 bg-white rounded-lg border border-borderMuted text-espresso flex items-center justify-center hover:bg-borderMuted">
+                            <i class="fa-solid fa-chevron-down text-xs"></i>
+                        </button>
+                        <span class="drag-handle cursor-grab active:cursor-grabbing p-1.5 text-espresso/40">
+                            <i class="fa-solid fa-grip-lines"></i>
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        moveOrderItem: function(btn, delta) {
+            const card = btn.closest('[data-id]');
+            const parent = card.parentNode;
+            if (delta === -1 && card.previousElementSibling) {
+                parent.insertBefore(card, card.previousElementSibling);
+            } else if (delta === 1 && card.nextElementSibling) {
+                parent.insertBefore(card.nextElementSibling, card);
+            }
+        },
+
+        // =====================================================================
+        // VIEW: LEADERBOARD
+        // =====================================================================
+        renderLeaderboardView: function(data) {
+            const container = document.getElementById('main-content');
+            const sortedPlayers = Object.values(data.players || {}).sort((a, b) => (b.score || 0) - (a.score || 0));
+
+            container.innerHTML = `
+                <div class="max-w-md mx-auto w-full bg-cardBg p-6 sm:p-8 rounded-3xl border border-borderMuted card-shadow space-y-6 animate-fade-in">
+                    <div class="text-center space-y-1">
+                        <div class="text-5xl animate-pulse">🏆</div>
+                        <h2 class="font-serif-title text-3xl font-extrabold text-espresso">LEADERBOARD</h2>
+                        <p class="text-xs text-goldAccent font-bold tracking-widest uppercase">TABLE STANDINGS</p>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        ${sortedPlayers.length === 0 ? `
+                            <div class="text-center text-xs text-mutedBronze py-8">No players registered yet</div>
+                        ` : sortedPlayers.map((p, idx) => {
+                            let badge = `${idx + 1}.`;
+                            let rowBg = 'bg-cream border border-borderMuted';
+                            if (idx === 0) {
+                                badge = '🥇';
+                                rowBg = 'bg-gradient-to-r from-goldLight to-cream border-2 border-goldAccent shadow-sm';
+                            } else if (idx === 1) {
+                                badge = '🥈';
+                            } else if (idx === 2) {
+                                badge = '🥉';
+                            }
+                            return `
+                                <div class="flex items-center justify-between p-4 ${rowBg} rounded-2xl">
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-xl font-bold w-7 text-center">${badge}</span>
+                                        <span class="font-extrabold text-espresso text-sm sm:text-base">${p.name}</span>
+                                    </div>
+                                    <span class="font-mono font-extrabold text-purpleAccent text-lg">${p.score || 0} pts</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    ${window.appState.role === 'host' ? `
+                        <button onclick="app.hostToggleLeaderboard()" class="w-full py-3.5 bg-espresso text-cream font-bold rounded-xl text-xs">
+                            Return to Question Screen
+                        </button>
+                    ` : `
+                        <p class="text-[11px] text-mutedBronze text-center">Host will return to questions shortly…</p>
+                    `}
+                </div>
+            `;
+        },
+
+        // =====================================================================
+        // PLAYER SUBMISSIONS & LOGIC
+        // =====================================================================
+        submitPlayerAnswer: async function(answer) {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+
+            if (data.status === 'TIME_UP' || (data.timerEndsAt && Date.now() > data.timerEndsAt)) {
+                this.showToast("Time has already expired!", "fa-clock");
+                return;
+            }
+
+            const pId = window.appState.playerId;
+            const responses = data.responses || {};
+            if (responses[pId]) {
+                this.showToast("Answer already locked!", "fa-lock");
+                return;
+            }
+
+            responses[pId] = answer;
+            await net.publish(data.code, { ...data, responses });
+            sound.playJoin();
+            this.showToast("Answer Locked 🔒", "fa-lock");
+        },
+
+        submitOrderAnswer: function() {
+            const el = document.getElementById('sortable-list');
+            if (!el) return;
+            const items = el.querySelectorAll('[data-id]');
+            const submittedOrder = Array.from(items).map(item => parseInt(item.getAttribute('data-id'), 10));
+            this.submitPlayerAnswer(submittedOrder);
+        },
+
+        checkPlayerAnswerCorrect: function(question, response) {
+            if (!response || !question) return false;
+            if (question.type === 'AGREE_DISAGREE') {
+                return response === question.correctAnswer;
+            }
+            if (question.type === 'ORDER') {
+                // Correct chronological indices are [0, 1, 2, 3]
+                return JSON.stringify(response) === '[0,1,2,3]';
+            }
+            return false;
+        },
+
+        // =====================================================================
+        // HOST GAME ACTIONS
+        // =====================================================================
+        hostStartGame: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            sound.playJoin();
+            await net.publish(data.code, {
+                ...data,
+                status: 'QUESTION',
+                currentQuestionIndex: 0,
+                responses: {}
+            });
+        },
+
+        hostStartTimer: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            const remaining = data.timerRemaining > 0 ? data.timerRemaining : (data.timerLength || 20);
+            const timerEndsAt = Date.now() + (remaining * 1000);
+
+            await net.publish(data.code, {
+                ...data,
+                timerRunning: true,
+                timerEndsAt: timerEndsAt,
+                timerRemaining: remaining,
+                status: 'QUESTION'
+            });
+        },
+
+        hostPauseTimer: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            let remaining = data.timerRemaining;
+            if (data.timerEndsAt) {
+                remaining = Math.max(0, Math.ceil((data.timerEndsAt - Date.now()) / 1000));
+            }
+
+            await net.publish(data.code, {
+                ...data,
+                timerRunning: false,
+                timerRemaining: remaining,
+                timerEndsAt: null
+            });
+        },
+
+        hostResetTimer: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            await net.publish(data.code, {
+                ...data,
+                timerRemaining: data.timerLength || 20,
+                timerEndsAt: null,
+                timerRunning: false,
+                status: 'QUESTION'
+            });
+        },
+
+        hostEndRoundEarly: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            sound.playTimeUp();
+            await net.publish(data.code, {
+                ...data,
+                timerRemaining: 0,
+                timerEndsAt: null,
+                timerRunning: false,
+                status: 'TIME_UP'
+            });
+        },
+
+        hostRevealAnswer: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+
+            const currentQ = data.questions[data.currentQuestionIndex];
+            const players = { ...(data.players || {}) };
+            const responses = data.responses || {};
+
+            // Automatically award points to correct players upon Reveal
+            if (currentQ.type === 'AGREE_DISAGREE') {
+                for (const [pId, resp] of Object.entries(responses)) {
+                    if (resp === currentQ.correctAnswer && players[pId]) {
+                        players[pId].score = (players[pId].score || 0) + 1;
+                    }
+                }
+            } else if (currentQ.type === 'ORDER') {
+                for (const [pId, resp] of Object.entries(responses)) {
+                    if (JSON.stringify(resp) === '[0,1,2,3]' && players[pId]) {
+                        players[pId].score = (players[pId].score || 0) + 1;
+                    }
+                }
+            }
+
+            sound.playCorrect();
+            await net.publish(data.code, {
+                ...data,
+                players: players,
+                status: 'REVEALED',
+                timerRunning: false,
+                timerEndsAt: null
+            });
+        },
+
+        hostNextQuestion: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            const nextIdx = data.currentQuestionIndex + 1;
+
+            if (nextIdx >= data.questions.length) {
+                this.showToast("All questions completed!", "fa-flag-checkered");
+                sound.playCorrect();
+                await net.publish(data.code, {
+                    ...data,
+                    showLeaderboard: true,
+                    status: 'ENDED'
+                });
+            } else {
+                await net.publish(data.code, {
+                    ...data,
+                    currentQuestionIndex: nextIdx,
+                    status: 'QUESTION',
+                    timerRemaining: data.timerLength || 20,
+                    timerEndsAt: null,
+                    timerRunning: false,
+                    responses: {}
+                });
+            }
+        },
+
+        hostToggleLeaderboard: async function() {
+            const data = window.appState.currentGameData;
+            if (!data) return;
+            await net.publish(data.code, {
+                ...data,
+                showLeaderboard: !data.showLeaderboard
+            });
+        },
+
+        hostAdjustScore: async function(pId, delta) {
+            const data = window.appState.currentGameData;
+            if (!data || !data.players || !data.players[pId]) return;
+            const players = { ...data.players };
+            players[pId].score = Math.max(0, (players[pId].score || 0) + delta);
+            await net.publish(data.code, { ...data, players });
+            this.showToast(`Updated score for ${players[pId].name}`, "fa-sliders");
+        },
+
+        hostRemovePlayer: async function(pId) {
+            const data = window.appState.currentGameData;
+            if (!data || !data.players || !data.players[pId]) return;
+            const players = { ...data.players };
+            const name = players[pId].name;
+            delete players[pId];
+            await net.publish(data.code, { ...data, players });
+            this.showToast(`Removed ${name}`, "fa-user-minus");
+        },
+
+        hostResetOrEndGame: function() {
+            if (confirm("End current session and return to setup?")) {
+                this.goHome();
+                this.renderHostSetup();
+            }
+        },
+
+        // =====================================================================
+        // QUESTION BANK CRUD MANAGEMENT
+        // =====================================================================
+        renderQuestionBankManager: function() {
+            const container = document.getElementById('main-content');
+            const qList = window.appState.questionBank;
+
+            container.innerHTML = `
+                <div class="max-w-2xl mx-auto w-full bg-cardBg p-6 rounded-3xl border border-borderMuted card-shadow space-y-5 animate-fade-in">
+                    <div class="flex justify-between items-center border-b border-borderMuted pb-3.5">
+                        <div>
+                            <h3 class="font-serif-title text-2xl font-bold text-espresso">Question Bank</h3>
+                            <p class="text-xs text-mutedBronze">Add, edit, or customize Bible questions for tonight</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="app.showAddQuestionModal()" class="text-xs px-3.5 py-2 bg-purpleAccent text-cream font-bold rounded-xl shadow-md hover:bg-purpleHover transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Add Question</span>
+                            </button>
+                            <button onclick="app.renderHostSetup()" class="text-xs px-3 py-2 bg-cream border border-borderMuted rounded-xl font-semibold hover:bg-borderMuted">
+                                ← Back
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Tabs -->
+                    <div class="flex gap-2 text-xs overflow-x-auto pb-1">
+                        <button onclick="app.filterQB('ALL')" class="qb-tab px-3 py-1.5 rounded-lg bg-purpleSoft text-purpleAccent font-bold">All (${qList.length})</button>
+                        <button onclick="app.filterQB('AGREE_DISAGREE')" class="qb-tab px-3 py-1.5 rounded-lg bg-cream text-espresso font-semibold">Agree/Disagree</button>
+                        <button onclick="app.filterQB('CATEGORIES')" class="qb-tab px-3 py-1.5 rounded-lg bg-cream text-espresso font-semibold">Categories</button>
+                        <button onclick="app.filterQB('ORDER')" class="qb-tab px-3 py-1.5 rounded-lg bg-cream text-espresso font-semibold">Put In Order</button>
+                    </div>
+
+                    <!-- Question Cards List -->
+                    <div id="qb-list-container" class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                        ${this.renderQBListItems(qList)}
+                    </div>
+
+                    <div class="pt-2 flex justify-between items-center text-xs text-mutedBronze border-t border-borderMuted">
+                        <button onclick="app.resetDefaultQuestions()" class="text-terracotta hover:underline font-semibold">
+                            Reset to Default Bible Questions
+                        </button>
+                        <span>${qList.length} questions available</span>
+                    </div>
+                </div>
+            `;
+        },
+
+        renderQBListItems: function(list) {
+            if (list.length === 0) {
+                return `<div class="text-center text-mutedBronze py-8 text-xs">No questions found in this category</div>`;
+            }
+            return list.map(q => `
+                <div class="p-4 bg-cream rounded-2xl border border-borderMuted space-y-2 text-xs">
+                    <div class="flex justify-between items-center font-bold">
+                        <span class="px-2 py-0.5 bg-purpleSoft text-purpleAccent rounded-md text-[10px] tracking-wider uppercase">
+                            ${q.type.replace('_', ' ')} • ${q.difficulty}
+                        </span>
+                        <div class="flex items-center gap-3">
+                            <button onclick="app.showEditQuestionModal('${q.id}')" class="text-purpleAccent hover:underline font-bold">Edit</button>
+                            <button onclick="app.deleteQuestion('${q.id}')" class="text-terracotta hover:underline font-bold">Delete</button>
+                        </div>
+                    </div>
+                    <p class="font-bold text-espresso text-sm">${q.statement || q.prompt}</p>
+                    ${q.explanation ? `<p class="text-espresso/70">${q.explanation}</p>` : ''}
+                    ${q.scripture ? `<p class="font-bold text-goldAccent">${q.scripture}</p>` : ''}
+                    ${q.type === 'ORDER' ? `
+                        <ol class="list-decimal list-inside space-y-0.5 text-[11px] text-mutedBronze">
+                            ${q.events.map(ev => `<li>${ev}</li>`).join('')}
+                        </ol>
+                    ` : ''}
+                </div>
+            `).join('');
+        },
+
+        filterQB: function(type) {
+            const tabs = document.querySelectorAll('.qb-tab');
+            tabs.forEach(t => {
+                t.className = 'qb-tab px-3 py-1.5 rounded-lg bg-cream text-espresso font-semibold';
+            });
+            event.target.className = 'qb-tab px-3 py-1.5 rounded-lg bg-purpleSoft text-purpleAccent font-bold';
+
+            let filtered = window.appState.questionBank;
+            if (type !== 'ALL') {
+                filtered = filtered.filter(q => q.type === type);
+            }
+            document.getElementById('qb-list-container').innerHTML = this.renderQBListItems(filtered);
+        },
+
+        showAddQuestionModal: function() {
+            document.getElementById('qb-modal-title').innerText = "Add Bible Question";
+            document.getElementById('qb-edit-id').value = "";
+            document.getElementById('qb-type').value = "AGREE_DISAGREE";
+            document.getElementById('qb-difficulty').value = "MEDIUM";
+            this.renderQuestionFormFields();
+            document.getElementById('qb-modal').classList.remove('hidden');
+        },
+
+        showEditQuestionModal: function(qId) {
+            const q = window.appState.questionBank.find(item => item.id === qId);
+            if (!q) return;
+
+            document.getElementById('qb-modal-title').innerText = "Edit Bible Question";
+            document.getElementById('qb-edit-id').value = q.id;
+            document.getElementById('qb-type').value = q.type;
+            document.getElementById('qb-difficulty').value = q.difficulty;
+            this.renderQuestionFormFields(q);
+            document.getElementById('qb-modal').classList.remove('hidden');
+        },
+
+        closeQuestionModal: function() {
+            document.getElementById('qb-modal').classList.add('hidden');
+        },
+
+        renderQuestionFormFields: function(q = null) {
+            const type = document.getElementById('qb-type').value;
+            const container = document.getElementById('qb-fields');
+
+            if (type === 'AGREE_DISAGREE') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block font-bold text-espresso mb-1">Statement</label>
+                        <input type="text" id="qb-field-statement" required value="${q ? (q.statement || '') : ''}" placeholder="e.g. Daniel was in the belly of the great fish." class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-espresso mb-1">Correct Answer</label>
+                        <select id="qb-field-answer" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-bold focus:border-purpleAccent focus:outline-none">
+                            <option value="AGREE" ${q && q.correctAnswer === 'AGREE' ? 'selected' : ''}>👍 AGREE</option>
+                            <option value="DISAGREE" ${q && q.correctAnswer === 'DISAGREE' ? 'selected' : ''}>👎 DISAGREE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-espresso mb-1">Explanation</label>
+                        <textarea id="qb-field-explanation" rows="2" placeholder="e.g. It was Jonah, not Daniel." class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">${q ? (q.explanation || '') : ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-espresso mb-1">Scripture Reference</label>
+                        <input type="text" id="qb-field-scripture" value="${q ? (q.scripture || '') : ''}" placeholder="e.g. Jonah 1:17" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                `;
+            } else if (type === 'CATEGORIES') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block font-bold text-espresso mb-1">Category Prompt</label>
+                        <input type="text" id="qb-field-prompt" required value="${q ? (q.prompt || '') : ''}" placeholder="e.g. NAME 5 WOMEN IN THE OLD TESTAMENT" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-espresso mb-1">Minimum Number Required</label>
+                        <input type="number" id="qb-field-min" min="1" max="20" value="${q ? (q.minRequired || 5) : 5}" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-espresso mb-1">Possible Approved Answers (comma-separated)</label>
+                        <textarea id="qb-field-possible" rows="3" required placeholder="e.g. Sarah, Rebekah, Rachel, Leah, Ruth, Esther" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">${q ? (q.possibleAnswers ? q.possibleAnswers.join(', ') : '') : ''}</textarea>
+                    </div>
+                `;
+            } else if (type === 'ORDER') {
+                const events = q ? q.events : ['', '', '', ''];
+                container.innerHTML = `
+                    <p class="font-bold text-goldAccent">Enter 4 events in their CORRECT chronological order (1st to 4th):</p>
+                    <div>
+                        <label class="block font-semibold text-espresso">1. Earliest Event</label>
+                        <input type="text" id="qb-field-ev0" required value="${events[0] || ''}" placeholder="e.g. Noah builds the Ark" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-espresso">2. Second Event</label>
+                        <input type="text" id="qb-field-ev1" required value="${events[1] || ''}" placeholder="e.g. Moses receives 10 Commandments" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-espresso">3. Third Event</label>
+                        <input type="text" id="qb-field-ev2" required value="${events[2] || ''}" placeholder="e.g. David defeats Goliath" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-espresso">4. Fourth Event</label>
+                        <input type="text" id="qb-field-ev3" required value="${events[3] || ''}" placeholder="e.g. Solomon builds Temple" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-espresso mb-1">Scripture Reference / Timeline Notes</label>
+                        <input type="text" id="qb-field-scripture-order" value="${q ? (q.scripture || '') : ''}" placeholder="e.g. Genesis -> Exodus -> 1 Sam -> 1 Kings" class="w-full p-2.5 bg-cream border-2 border-borderMuted rounded-xl font-medium focus:border-purpleAccent focus:outline-none">
+                    </div>
+                `;
+            }
+        },
+
+        handleSaveQuestion: function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('qb-edit-id').value;
+            const type = document.getElementById('qb-type').value;
+            const difficulty = document.getElementById('qb-difficulty').value;
+
+            let newQ = {
+                id: editId || `custom_${Date.now()}`,
+                type: type,
+                difficulty: difficulty
+            };
+
+            if (type === 'AGREE_DISAGREE') {
+                newQ.statement = document.getElementById('qb-field-statement').value.trim();
+                newQ.correctAnswer = document.getElementById('qb-field-answer').value;
+                newQ.explanation = document.getElementById('qb-field-explanation').value.trim();
+                newQ.scripture = document.getElementById('qb-field-scripture').value.trim();
+            } else if (type === 'CATEGORIES') {
+                newQ.prompt = document.getElementById('qb-field-prompt').value.trim();
+                newQ.minRequired = parseInt(document.getElementById('qb-field-min').value, 10) || 5;
+                newQ.possibleAnswers = document.getElementById('qb-field-possible').value.split(',').map(s => s.trim()).filter(Boolean);
+            } else if (type === 'ORDER') {
+                newQ.events = [
+                    document.getElementById('qb-field-ev0').value.trim(),
+                    document.getElementById('qb-field-ev1').value.trim(),
+                    document.getElementById('qb-field-ev2').value.trim(),
+                    document.getElementById('qb-field-ev3').value.trim()
+                ];
+                newQ.scripture = document.getElementById('qb-field-scripture-order').value.trim();
+            }
+
+            if (editId) {
+                const idx = window.appState.questionBank.findIndex(item => item.id === editId);
+                if (idx !== -1) window.appState.questionBank[idx] = newQ;
+            } else {
+                window.appState.questionBank.unshift(newQ);
+            }
+
+            saveQuestions(window.appState.questionBank);
+            this.closeQuestionModal();
+            this.renderQuestionBankManager();
+            this.showToast("Question saved successfully!", "fa-circle-check");
+        },
+
+        deleteQuestion: function(id) {
+            if (confirm("Delete this question?")) {
+                window.appState.questionBank = window.appState.questionBank.filter(q => q.id !== id);
+                saveQuestions(window.appState.questionBank);
+                this.renderQuestionBankManager();
+                this.showToast("Question removed", "fa-trash");
+            }
+        },
+
+        resetDefaultQuestions: function() {
+            if (confirm("Reset question bank to original 30 questions?")) {
+                window.appState.questionBank = DEFAULT_QUESTIONS;
+                saveQuestions(DEFAULT_QUESTIONS);
+                this.renderQuestionBankManager();
+                this.showToast("Reset to default question bank", "fa-rotate-left");
+            }
+        },
+
+        // =====================================================================
+        // NETWORK CONFIG MODAL
+        // =====================================================================
+        showConfigModal: function() {
+            const modal = document.getElementById('config-modal');
+            const stored = localStorage.getItem('lords_table_firebase_config') || '';
+            document.getElementById('input-firebase-config-json').value = stored;
+            net.updateStatusUI(net.mode === 'server' ? 'Local Event Server' : (net.mode === 'firestore' ? 'Cloud Firestore' : 'Local Tab Bus'));
+            modal.classList.remove('hidden');
+        },
+
+        closeConfigModal: function() {
+            document.getElementById('config-modal').classList.add('hidden');
+        },
+
+        saveCustomFirebaseConfig: function() {
+            const val = document.getElementById('input-firebase-config-json').value.trim();
+            try {
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(val);
+                } catch(e) {
+                    parsed = Function('"use strict";return (' + val + ')')();
+                }
+
+                if (!parsed || !parsed.apiKey || !parsed.projectId) {
+                    throw new Error("Config must contain at least 'apiKey' and 'projectId'.");
+                }
+
+                localStorage.setItem('lords_table_firebase_config', JSON.stringify(parsed));
+                this.closeConfigModal();
+                net.initFirestore(parsed);
+                this.showToast("Firebase Config saved & connected!", "fa-circle-check");
+            } catch(err) {
+                alert("Invalid configuration JSON: " + err.message);
+            }
+        },
+
+        useLocalEngine: function() {
+            localStorage.removeItem('lords_table_firebase_config');
+            this.closeConfigModal();
+            net.initLocalBus();
+            this.showToast("Switched to Local Tab Bus", "fa-network-wired");
+        }
+    };
+
+    // --- Boot Initialization ---
+    window.addEventListener('DOMContentLoaded', async () => {
+        await net.init();
+        if (!window.app.checkExistingSession()) {
+            window.app.renderLandingPage();
+        }
+    });
+</script>
+
+</body>
+</html>
