@@ -876,6 +876,12 @@
                 if (!data) return;
                 window.appState.currentGameData = data;
 
+                // When the host ends the event, send every player back to the home page.
+                if (data.status === 'SESSION_ENDED') {
+                    this.goHome();
+                    return;
+                }
+
                 // Render first so the timer elements exist before we update them.
                 if (window.appState.role === 'host') {
                     this.renderHostDashboard(data);
@@ -1679,13 +1685,39 @@
                 const sequence = data.gameSequence || [data.gameType];
                 const nextType = sequence[(data.currentGameIndex || 0) + 1];
                 const final = data.status === 'ENDED';
+                const sortedPlayers = [...playersList].sort((a,b) => (b.score || 0) - (a.score || 0));
                 container.innerHTML = `
-                    <div class="max-w-md mx-auto w-full bg-cardBg p-7 rounded-3xl border border-borderMuted card-shadow text-center space-y-6 animate-fade-in">
-                        <div class="text-5xl">${final ? '🏆' : '🎉'}</div>
-                        <div><h2 class="font-serif-title text-3xl font-extrabold text-espresso">${final ? 'BIBLE GAMES COMPLETE!' : `${gameLabels[data.gameType] || 'GAME'} COMPLETE`}</h2>
-                        <p class="text-sm font-semibold text-mutedBronze mt-2">${final ? 'Here is your final combined score.' : `Up next: ${gameLabels[nextType] || nextType}`}</p></div>
-                        <div class="bg-purpleSoft border border-purpleAccent/20 p-5 rounded-2xl"><div class="text-xs font-bold text-purpleAccent uppercase">YOUR TOTAL SCORE</div><div class="text-4xl font-extrabold text-espresso font-mono">${myPlayer.score || 0} PTS</div></div>
-                        <p class="text-xs text-mutedBronze">${final ? 'Thanks for playing! 🎊' : 'Stay on this screen — the host will start the next game.'}</p>
+                    <div class="max-w-md mx-auto w-full bg-cardBg p-7 rounded-3xl border border-borderMuted card-shadow space-y-6 animate-fade-in">
+                        <div class="text-center space-y-2">
+                            <div class="text-5xl">${final ? '🏆' : '📊'}</div>
+                            <h2 class="font-serif-title text-3xl font-extrabold text-espresso">${final ? 'FINAL LEADERBOARD' : `${gameLabels[data.gameType] || 'GAME'} COMPLETE`}</h2>
+                            <p class="text-sm font-semibold text-mutedBronze">${final ? 'Final combined scores from all games' : `Here’s who is in the lead. Up next: ${gameLabels[nextType] || nextType}`}</p>
+                        </div>
+
+                        <div class="space-y-2.5">
+                            ${sortedPlayers.map((p, i) => {
+                                const badge = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                                const isMe = p.id === pId;
+                                return `
+                                    <div class="flex items-center justify-between p-4 rounded-2xl border ${isMe ? 'bg-purpleSoft border-purpleAccent/30' : 'bg-cream border-borderMuted'}">
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-xl font-bold w-7 text-center">${badge}</span>
+                                            <div>
+                                                <div class="font-extrabold text-espresso text-sm">${p.name}</div>
+                                                ${isMe ? '<div class="text-[10px] font-bold text-purpleAccent uppercase">You</div>' : ''}
+                                            </div>
+                                        </div>
+                                        <span class="font-mono font-extrabold text-purpleAccent text-lg">${p.score || 0} pts</span>
+                                    </div>`;
+                            }).join('')}
+                        </div>
+
+                        <div class="text-center bg-purpleSoft border border-purpleAccent/20 p-4 rounded-2xl">
+                            <div class="text-xs font-bold text-purpleAccent uppercase">YOUR TOTAL SCORE</div>
+                            <div class="text-3xl font-extrabold text-espresso font-mono">${myPlayer.score || 0} PTS</div>
+                        </div>
+
+                        <p class="text-xs text-mutedBronze text-center">${final ? 'The host will end the event when everyone has seen the final results.' : 'The host will start the next game shortly.'}</p>
                     </div>`;
                 return;
             }
@@ -2269,10 +2301,19 @@
             this.showToast(`Removed ${name}`, "fa-user-minus");
         },
 
-        hostResetOrEndGame: function() {
-            if (confirm("End current session and return to setup?")) {
+        hostResetOrEndGame: async function() {
+            if (confirm("End current session and return everyone to the home page?")) {
+                const data = window.appState.currentGameData;
+                if (data && data.code) {
+                    await net.publish(data.code, {
+                        ...data,
+                        status: 'SESSION_ENDED',
+                        timerRunning: false,
+                        timerEndsAt: null,
+                        showLeaderboard: false
+                    });
+                }
                 this.goHome();
-                this.renderHostSetup();
             }
         },
 
